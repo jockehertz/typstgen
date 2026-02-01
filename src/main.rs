@@ -6,20 +6,25 @@ mod templates;
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
 use std::process::Command;
-use templates::{TEMPLATE_DIRECTORY, TemplateSource, TemplatingError};
+use templates::{
+    DEFAULT_TEMPLATE, TEMPLATE_DIRECTORY, Template, TemplateSource, TemplatingError, get_template,
+};
 
 #[derive(Debug)]
 pub struct Options {
-    author: Option<String>,
+    output: String,
     template: TemplateSource,
+    author: Option<String>,
     orcid: Option<String>,
+    lang: String,
+    default_template: TemplateSource,
     debug: bool,
 }
 
 pub struct AutoAuthorFromGit;
 
 fn print_error(message: &str) -> () {
-    println!("{}", message);
+    println!("Error: {}", message);
 }
 
 // Gets the git username
@@ -39,6 +44,7 @@ fn main() {
     // Collect the CLI arguments
     let args = Args::parse();
 
+    // Get the options from CLI argument, with error handling
     let options = match parse_cli_args(args) {
         Ok(opts) => opts,
         Err(cli_error) => match cli_error {
@@ -57,9 +63,13 @@ fn main() {
                     );
                     return;
                 }
-                TemplatingError::NoTemplateDirectory => {
+                TemplatingError::NoTemplateDirectory(dir_path) => {
                     print_error(
-                        format!("The {} directory does not exist.", TEMPLATE_DIRECTORY).as_str(),
+                        format!(
+                            "The {} directory does not exist.",
+                            dir_path.to_str().unwrap()
+                        )
+                        .as_str(),
                     );
                     return;
                 }
@@ -71,8 +81,44 @@ fn main() {
         },
     };
 
+    // Print the options struct if in debug mode
     if options.debug {
-        println!("{:?}", options);
+        println!("Options struct: {:?}", options);
+    }
+
+    // Get the template, and handle any errors that may occur
+    let template = match get_template(options.template, options.default_template) {
+        Ok(template) => template,
+        Err(error) => match error {
+            TemplatingError::CouldNotFindHomeDir => {
+                print_error("Could not find the home directory");
+                return;
+            }
+            TemplatingError::CouldNotReadTemplateFile(filepath) => {
+                print_error(
+                    format!("Could not read file at {}", filepath.to_str().unwrap()).as_str(),
+                );
+                return;
+            }
+            TemplatingError::NoTemplateDirectory(dir_path) => {
+                print_error(
+                    format!(
+                        "The {} directory does not exist",
+                        dir_path.to_str().unwrap()
+                    )
+                    .as_str(),
+                );
+                return;
+            }
+            TemplatingError::TemplateNotFound(name) => {
+                print_error(format!("Template with name {} not found", name).as_str());
+                return;
+            }
+        },
+    };
+
+    if options.debug {
+        println!("{:?}", template);
     }
 
     println!("Hello, world!");

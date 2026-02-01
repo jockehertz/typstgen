@@ -1,19 +1,17 @@
 // This module handles templating
 
-use regex::Regex;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Template {
-    DefaultTemplate,
     Report(String),
     Article(String),
     Custom(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TemplateSource {
     BuiltinReport,
     BuiltinArticle,
@@ -23,7 +21,7 @@ pub enum TemplateSource {
 
 pub enum TemplatingError {
     TemplateNotFound(String),
-    NoTemplateDirectory,
+    NoTemplateDirectory(PathBuf),
     CouldNotFindHomeDir,
     CouldNotReadTemplateFile(PathBuf),
 }
@@ -42,12 +40,19 @@ const BUILTIN_REPORT_ARG: &str = "report";
 
 const BUILTIN_ARTICLE_ARG: &str = "article";
 
+pub const DEFAULT_TEMPLATE: TemplateSource = TemplateSource::BuiltinReport;
+
 // Get a template, builtin or custom
 pub fn get_template(
     template_source: TemplateSource,
-    default_template_path: PathBuf,
+    default_template: TemplateSource,
 ) -> Result<Template, TemplatingError> {
-    match template_source {
+    let actual_source = match template_source {
+        TemplateSource::DefaultTemplate => default_template,
+        other => other,
+    };
+
+    match actual_source {
         // Builtin report template
         TemplateSource::BuiltinReport => Ok(Template::Report(String::from(REPORT_TEMPLATE_STRING))),
         // Builtin article template
@@ -62,12 +67,7 @@ pub fn get_template(
         },
 
         // Default template
-        TemplateSource::DefaultTemplate => match fs::read_to_string(&default_template_path) {
-            Ok(content) => Ok(Template::Custom(content)),
-            Err(_) => Err(TemplatingError::CouldNotReadTemplateFile(
-                default_template_path,
-            )),
-        },
+        TemplateSource::DefaultTemplate => unreachable!(),
     }
 }
 
@@ -87,17 +87,16 @@ pub fn get_template_source(template_name: String) -> Result<TemplateSource, Temp
 
             // If there is no template directory, return an error here
             if !template_path.exists() {
-                return Err(TemplatingError::NoTemplateDirectory);
+                return Err(TemplatingError::NoTemplateDirectory(template_path));
             }
 
             // Check if the user gave the template file with or without the .typ extenstion
-            let match_regex = Regex::new("*.typ").unwrap();
 
-            if match_regex.is_match(other_name) {
+            if other_name.ends_with(".typ") {
                 template_path.push(other_name);
             } else {
                 template_path.push(other_name);
-                template_path.add_extension(".typ");
+                template_path.set_extension("typ");
             };
 
             // Check that the template exists

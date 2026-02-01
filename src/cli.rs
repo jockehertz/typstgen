@@ -1,7 +1,7 @@
 // The module that handles the CLI
 
 use crate::Options;
-use crate::templates::{TemplateSource, TemplatingError, get_template_source};
+use crate::templates::{DEFAULT_TEMPLATE, TemplateSource, TemplatingError, get_template_source};
 use clap::Parser;
 
 pub enum CliError {
@@ -29,9 +29,8 @@ pub struct Args {
     debug: bool,
 }
 
+// Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args) -> Result<Options, CliError> {
-    const AUTHOR_NAME_PLACEHOLDER: &str = "AUTHOR NAME HERE";
-
     let template: TemplateSource = match args.template {
         Some(template) => match get_template_source(template) {
             Ok(template) => template,
@@ -41,9 +40,12 @@ pub fn parse_cli_args(args: Args) -> Result<Options, CliError> {
     };
 
     Ok(Options {
+        output: args.output,
         template: template,
         author: args.author,
         orcid: args.orcid,
+        lang: args.lang.trim().to_string(),
+        default_template: DEFAULT_TEMPLATE,
         debug: args.debug,
     })
 }
