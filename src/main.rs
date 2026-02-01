@@ -6,9 +6,9 @@ mod templates;
 
 use crate::cli::{Args, CliError, FlagOptions, parse_cli_args};
 use clap::Parser;
-use defaults::DEFAULT_TEMPLATE;
+use defaults::{DEFAULT_TEMPLATE, TEMPLATE_DIRECTORY};
 use std::process::Command;
-use templates::{TEMPLATE_DIRECTORY, Template, TemplateSource, TemplatingError, get_template};
+use templates::{Template, TemplateSource, TemplatingError, get_template};
 
 #[derive(Debug)]
 pub struct Options {
