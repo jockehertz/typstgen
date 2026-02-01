@@ -1,7 +1,9 @@
 // The module that handles the CLI
 
-use crate::Options;
-use crate::templates::{DEFAULT_TEMPLATE, TemplateSource, TemplatingError, get_template_source};
+use crate::{
+    defaults::DEFAULT_TEMPLATE,
+    templates::{TemplateSource, TemplatingError, get_template_source},
+};
 use clap::Parser;
 
 pub enum CliError {
@@ -29,8 +31,17 @@ pub struct Args {
     debug: bool,
 }
 
+#[derive(Debug)]
+pub struct FlagOptions {
+    pub output: String,
+    pub template: TemplateSource,
+    pub author: Option<String>,
+    pub orcid: Option<String>,
+    pub lang: String,
+    pub debug: bool,
+}
 // Parse the CLI arguments into an Options struct
-pub fn parse_cli_args(args: Args) -> Result<Options, CliError> {
+pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
     let template: TemplateSource = match args.template {
         Some(template) => match get_template_source(template) {
             Ok(template) => template,
@@ -39,13 +50,12 @@ pub fn parse_cli_args(args: Args) -> Result<Options, CliError> {
         None => TemplateSource::DefaultTemplate,
     };
 
-    Ok(Options {
+    Ok(FlagOptions {
         output: args.output,
         template: template,
         author: args.author,
         orcid: args.orcid,
         lang: args.lang.trim().to_string(),
-        default_template: DEFAULT_TEMPLATE,
         debug: args.debug,
     })
 }

@@ -1,5 +1,6 @@
 // This module handles templating
 
+use crate::defaults::{ARTICLE_TEMPLATE_STRING, REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -26,21 +27,9 @@ pub enum TemplatingError {
     CouldNotReadTemplateFile(PathBuf),
 }
 
-const REPORT_TEMPLATE_STRING: &str = r#"
-look at me, I'm a report template!
-"#;
-
-const ARTICLE_TEMPLATE_STRING: &str = r#"
-look at me, I'm an article template!
-"#;
-
-pub const TEMPLATE_DIRECTORY: &str = ".typstgen/templates";
-
 const BUILTIN_REPORT_ARG: &str = "report";
 
 const BUILTIN_ARTICLE_ARG: &str = "article";
-
-pub const DEFAULT_TEMPLATE: TemplateSource = TemplateSource::BuiltinReport;
 
 // Get a template, builtin or custom
 pub fn get_template(

@@ -1,14 +1,14 @@
 // # Get CLI arguments, and build a context object
 
 mod cli;
+mod defaults;
 mod templates;
 
-use crate::cli::{Args, CliError, parse_cli_args};
+use crate::cli::{Args, CliError, FlagOptions, parse_cli_args};
 use clap::Parser;
+use defaults::DEFAULT_TEMPLATE;
 use std::process::Command;
-use templates::{
-    DEFAULT_TEMPLATE, TEMPLATE_DIRECTORY, Template, TemplateSource, TemplatingError, get_template,
-};
+use templates::{TEMPLATE_DIRECTORY, Template, TemplateSource, TemplatingError, get_template};
 
 #[derive(Debug)]
 pub struct Options {
@@ -45,7 +45,7 @@ fn main() {
     let args = Args::parse();
 
     // Get the options from CLI argument, with error handling
-    let options = match parse_cli_args(args) {
+    let flag_options = match parse_cli_args(args) {
         Ok(opts) => opts,
         Err(cli_error) => match cli_error {
             CliError::TemplateError(template_error) => match template_error {
@@ -79,6 +79,16 @@ fn main() {
                 }
             },
         },
+    };
+
+    let options = Options {
+        output: flag_options.output,
+        template: flag_options.template,
+        author: flag_options.author,
+        orcid: flag_options.orcid,
+        lang: flag_options.lang,
+        debug: flag_options.debug,
+        default_template: DEFAULT_TEMPLATE,
     };
 
     // Print the options struct if in debug mode
