@@ -81,6 +81,9 @@ fn main() {
         },
     };
 
+    // Initialise the program options struct. This will have lots of match arms later on
+    // due to the config file. I'm thinking main will deserialise the config, and then give a helper function in another module the
+    // flag_options struct and the deserialised config to work with.
     let options = Options {
         output: flag_options.output,
         template: flag_options.template,
