@@ -1,7 +1,7 @@
 // The module that handles the CLI
 
 use crate::{
-    defaults::DEFAULT_TEMPLATE,
+    defaults::DEFAULT_LANG,
     templates::{TemplateSource, TemplatingError, get_template_source},
 };
 use clap::Parser;
@@ -28,10 +28,10 @@ pub struct Args {
     #[arg(short, long)]
     author: Option<String>,
     // ORCID flag
-    #[arg(long)]
+    #[arg(long, default_missing_value = "XXXX-XXXX-XXXX-XXXX")]
     orcid: Option<String>,
     // Language flag
-    #[arg(short, long, default_value = "en")]
+    #[arg(short, long, default_value = DEFAULT_LANG)]
     lang: String,
     #[arg(short, long)]
     debug: bool,

@@ -80,8 +80,18 @@ fn reformat_author_name(author: &String) -> String {
 }
 
 // Substitute template with options
-fn substitute_template(template: String, options: &Options) -> String {
+fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
     let mut template = template;
+    let cfg_dir = match dirs::config_dir() {
+        Some(dir) => dir,
+        None => return Err(TemplatingError::CouldNotFindCfgDir),
+    };
+
+    let lib_file = cfg_dir.join(format!("typstgen/lib.typ"));
+
+    if lib_file.exists() {
+        template = format!("#include {}\n\n {}", lib_file.display(), template);
+    }
 
     // Get the author name, infer it if git inference is enabled
     let author = match options.author.clone() {
@@ -139,7 +149,7 @@ fn substitute_template(template: String, options: &Options) -> String {
 
     template = template.replace("{{LANG}}", &options.lang);
 
-    template
+    Ok(template)
 }
 
 pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
@@ -149,7 +159,7 @@ pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
         Template::Report(content) => content,
         Template::Custom(content) => content,
     };
-    let final_string = substitute_template(template_string, &options);
+    let final_string = substitute_template(template_string, &options)?;
     Ok(final_string)
 }
 

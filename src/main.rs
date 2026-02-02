@@ -133,7 +133,7 @@ fn main() {
         false => format!("{}.typ", options.output.clone()),
     };
 
-    fs::write(file_name, template);
+    let _ = fs::write(file_name, template);
 
     println!("Hello, world!");
 }
