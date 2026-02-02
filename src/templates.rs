@@ -2,8 +2,8 @@
 
 use crate::Options;
 use crate::defaults::{
-    ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_IMAGE, REPORT_TEMPLATE_STRING,
-    TEMPLATE_DIRECTORY,
+    ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_ICON_SIZE_PT, ORCID_IMAGE,
+    REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY,
 };
 use dirs;
 use std::fs;
@@ -65,12 +65,18 @@ pub fn get_template(
     }
 }
 
-// Reformat author name to last name, first name
-fn reformat_author_name(author: String) -> String {
-    let author_reformat_vec = author.split(" ").collect::<Vec<&str>>();
-    let author_last_name = vec![author_reformat_vec[author_reformat_vec.len() - 1]];
-    let author_other_names = author_reformat_vec[0..(author_reformat_vec.len() - 1)].join(" ");
-    format!("{}, {}", author_last_name.join(""), author_other_names)
+// Reformat author name to last name, first name if it has 2 names
+fn reformat_author_name(author: &String) -> String {
+    let parts = author.split(" ").collect::<Vec<&str>>();
+    match parts.len() {
+        0 => String::new(),
+        2 => format!(
+            "{}, {}",
+            author.split(" ").collect::<Vec<&str>>()[1],
+            author.split(" ").collect::<Vec<&str>>()[0]
+        ),
+        _ => author.clone(),
+    }
 }
 
 // Substitute template with options
@@ -83,7 +89,13 @@ fn substitute_template(template: String, options: &Options) -> String {
         None => {
             if options.name_inference {
                 match realname() {
-                    Ok(username) => username,
+                    Ok(username) => {
+                        if options.inferred_name_reformat {
+                            reformat_author_name(&username)
+                        } else {
+                            username
+                        }
+                    }
                     Err(_) => AUTHOR_PLACEHOLDER.to_string(),
                 }
             } else {
@@ -93,25 +105,31 @@ fn substitute_template(template: String, options: &Options) -> String {
     };
 
     // Substitute author name, reformatted to last name, first name
-    let author_reformatted = reformat_author_name(author);
-    template = template.replace("{{AUTHOR_NAME}}", &author_reformatted);
+    template = template.replace("{{AUTHOR_NAME}}", &author);
 
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
     match options.orcid.clone() {
         Some(id) => {
-            template = template.replace(
-                "{{ORCID_ID}}",
-                &format!(" #orcid_svg https://orcid.org/{}", id),
-            );
-            template = template.replace(
+            if template.contains("{{ORCID_ICON_DECLARATION}}") {
+                template = template.replace(
+                    "{{ORCID_ID}}",
+                    &format!(" #orcid_svg https://orcid.org/{}", id),
+                );
+                template = template.replace(
                 "{{ORCID_ICON_DECLARATION}}",
                 format!(
-                    "#let orcid_svg = image(bytes(\"{}\"), width: 18pt, height: 18pt)",
-                    ORCID_IMAGE
+                    "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+                    ORCID_IMAGE.replace("\"", "\\\""),
+                    ORCID_ICON_SIZE_PT,
+                    ORCID_ICON_SIZE_PT,
+                    ORCID_ICON_SIZE_PT,
                 )
                 .as_str(),
             );
+            } else {
+                template = template.replace("{{ORCID_ID}}", &id);
+            }
         }
         None => {
             template = template.replace("{{ORCID_ID}}", "");

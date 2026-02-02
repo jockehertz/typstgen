@@ -4,12 +4,11 @@ mod cli;
 mod defaults;
 mod templates;
 
-use crate::cli::{Args, CliError, FlagOptions, parse_cli_args};
+use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
-use defaults::{DEFAULT_TEMPLATE, NAME_INFERENCE_DEFAULT, TEMPLATE_DIRECTORY};
-use std::process::Command;
-use templates::{Template, TemplateSource, TemplatingError, assemble_template};
-use whoami::realname;
+use defaults::{DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT};
+use std::fs;
+use templates::{TemplateSource, TemplatingError, assemble_template};
 
 #[derive(Debug)]
 pub struct Options {
@@ -21,6 +20,7 @@ pub struct Options {
     default_template: TemplateSource,
     debug: bool,
     name_inference: bool,
+    inferred_name_reformat: bool,
 }
 
 pub struct AutoAuthorFromGit;
@@ -82,6 +82,7 @@ fn main() {
         debug: flag_options.debug,
         default_template: DEFAULT_TEMPLATE,
         name_inference: NAME_INFERENCE_DEFAULT,
+        inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
     };
 
     // Print the options struct if in debug mode
@@ -122,6 +123,17 @@ fn main() {
     if options.debug {
         println!("\n\nTEMPLATE: \n{:?}", template);
     }
+
+    if options.debug {
+        println!("\n\nWriting file...");
+    }
+
+    let file_name = match options.output.clone().ends_with(".typ") {
+        true => options.output.clone(),
+        false => format!("{}.typ", options.output.clone()),
+    };
+
+    fs::write(file_name, template);
 
     println!("Hello, world!");
 }
