@@ -49,8 +49,8 @@ fn main() {
         Ok(opts) => opts,
         Err(cli_error) => match cli_error {
             CliError::TemplateError(template_error) => match template_error {
-                TemplatingError::CouldNotFindHomeDir => {
-                    print_error("Could not find the user's home directory");
+                TemplatingError::CouldNotFindCfgDir => {
+                    print_error("Could not find the user's configuration directory");
                     return;
                 }
                 TemplatingError::CouldNotReadTemplateFile(filepath) => {
@@ -103,8 +103,8 @@ fn main() {
     let template = match get_template(options.template, options.default_template) {
         Ok(template) => template,
         Err(error) => match error {
-            TemplatingError::CouldNotFindHomeDir => {
-                print_error("Could not find the home directory");
+            TemplatingError::CouldNotFindCfgDir => {
+                print_error("Could not find the configuration directory");
                 return;
             }
             TemplatingError::CouldNotReadTemplateFile(filepath) => {

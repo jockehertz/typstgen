@@ -1,7 +1,7 @@
 // This module handles templating
 
 use crate::defaults::{ARTICLE_TEMPLATE_STRING, REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY};
-use std::env;
+use dirs;
 use std::fs;
 use std::path::PathBuf;
 
@@ -23,7 +23,7 @@ pub enum TemplateSource {
 pub enum TemplatingError {
     TemplateNotFound(String),
     NoTemplateDirectory(PathBuf),
-    CouldNotFindHomeDir,
+    CouldNotFindCfgDir,
     CouldNotReadTemplateFile(PathBuf),
 }
 
@@ -67,11 +67,11 @@ pub fn get_template_source(template_name: String) -> Result<TemplateSource, Temp
         BUILTIN_ARTICLE_ARG => Ok(TemplateSource::BuiltinArticle),
         other_name => {
             let mut template_path = PathBuf::new();
-            let home_path = match env::var("HOME") {
-                Ok(path) => path,
-                Err(_) => return Err(TemplatingError::CouldNotFindHomeDir),
+            let config_path = match dirs::config_dir() {
+                Some(path) => path,
+                None => return Err(TemplatingError::CouldNotFindCfgDir),
             };
-            template_path.push(home_path);
+            template_path.push(config_path);
             template_path.push(TEMPLATE_DIRECTORY);
 
             // If there is no template directory, return an error here
