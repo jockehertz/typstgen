@@ -10,6 +10,12 @@ pub enum CliError {
     TemplateError(TemplatingError),
 }
 
+impl From<TemplatingError> for CliError {
+    fn from(error: TemplatingError) -> Self {
+        CliError::TemplateError(error)
+    }
+}
+
 // The struct for the CLI arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -43,10 +49,7 @@ pub struct FlagOptions {
 // Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
     let template: TemplateSource = match args.template {
-        Some(template) => match get_template_source(template) {
-            Ok(template) => template,
-            Err(error) => return Err(CliError::TemplateError(error)),
-        },
+        Some(template) => get_template_source(template)?,
         None => TemplateSource::DefaultTemplate,
     };
 

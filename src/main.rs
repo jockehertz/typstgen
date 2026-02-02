@@ -6,9 +6,10 @@ mod templates;
 
 use crate::cli::{Args, CliError, FlagOptions, parse_cli_args};
 use clap::Parser;
-use defaults::{DEFAULT_TEMPLATE, TEMPLATE_DIRECTORY};
+use defaults::{DEFAULT_TEMPLATE, NAME_INFERENCE_DEFAULT, TEMPLATE_DIRECTORY};
 use std::process::Command;
-use templates::{Template, TemplateSource, TemplatingError, get_template};
+use templates::{Template, TemplateSource, TemplatingError, assemble_template};
+use whoami::realname;
 
 #[derive(Debug)]
 pub struct Options {
@@ -19,25 +20,13 @@ pub struct Options {
     lang: String,
     default_template: TemplateSource,
     debug: bool,
+    name_inference: bool,
 }
 
 pub struct AutoAuthorFromGit;
 
 fn print_error(message: &str) -> () {
     println!("Error: {}", message);
-}
-
-// Gets the git username
-fn get_git_username() -> Option<String> {
-    let output = Command::new("git")
-        .args(["config", "user.name"])
-        .output()
-        .ok();
-
-    match output {
-        Some(output) => String::from_utf8(output.stdout).ok(),
-        None => None,
-    }
 }
 
 fn main() {
@@ -92,6 +81,7 @@ fn main() {
         lang: flag_options.lang,
         debug: flag_options.debug,
         default_template: DEFAULT_TEMPLATE,
+        name_inference: NAME_INFERENCE_DEFAULT,
     };
 
     // Print the options struct if in debug mode
@@ -99,8 +89,7 @@ fn main() {
         println!("Options struct: {:?}", options);
     }
 
-    // Get the template, and handle any errors that may occur
-    let template = match get_template(options.template, options.default_template) {
+    let template = match assemble_template(&options) {
         Ok(template) => template,
         Err(error) => match error {
             TemplatingError::CouldNotFindCfgDir => {
@@ -131,7 +120,7 @@ fn main() {
     };
 
     if options.debug {
-        println!("{:?}", template);
+        println!("\n\nTEMPLATE: \n{:?}", template);
     }
 
     println!("Hello, world!");

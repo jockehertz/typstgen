@@ -1,9 +1,14 @@
 // This module handles templating
 
-use crate::defaults::{ARTICLE_TEMPLATE_STRING, REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY};
+use crate::Options;
+use crate::defaults::{
+    ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_IMAGE, REPORT_TEMPLATE_STRING,
+    TEMPLATE_DIRECTORY,
+};
 use dirs;
 use std::fs;
 use std::path::PathBuf;
+use whoami::realname;
 
 #[derive(Debug, Clone)]
 pub enum Template {
@@ -58,6 +63,76 @@ pub fn get_template(
         // Default template
         TemplateSource::DefaultTemplate => unreachable!(),
     }
+}
+
+// Reformat author name to last name, first name
+fn reformat_author_name(author: String) -> String {
+    let author_reformat_vec = author.split(" ").collect::<Vec<&str>>();
+    let author_last_name = vec![author_reformat_vec[author_reformat_vec.len() - 1]];
+    let author_other_names = author_reformat_vec[0..(author_reformat_vec.len() - 1)].join(" ");
+    format!("{}, {}", author_last_name.join(""), author_other_names)
+}
+
+// Substitute template with options
+fn substitute_template(template: String, options: &Options) -> String {
+    let mut template = template;
+
+    // Get the author name, infer it if git inference is enabled
+    let author = match options.author.clone() {
+        Some(author) => author,
+        None => {
+            if options.name_inference {
+                match realname() {
+                    Ok(username) => username,
+                    Err(_) => AUTHOR_PLACEHOLDER.to_string(),
+                }
+            } else {
+                AUTHOR_PLACEHOLDER.to_string()
+            }
+        }
+    };
+
+    // Substitute author name, reformatted to last name, first name
+    let author_reformatted = reformat_author_name(author);
+    template = template.replace("{{AUTHOR_NAME}}", &author_reformatted);
+
+    // Substitute author ORCID ID if it exists
+    // The ORCID is only declared if an ORCID ID is provided
+    match options.orcid.clone() {
+        Some(id) => {
+            template = template.replace(
+                "{{ORCID_ID}}",
+                &format!(" #orcid_svg https://orcid.org/{}", id),
+            );
+            template = template.replace(
+                "{{ORCID_ICON_DECLARATION}}",
+                format!(
+                    "#let orcid_svg = image(bytes(\"{}\"), width: 18pt, height: 18pt)",
+                    ORCID_IMAGE
+                )
+                .as_str(),
+            );
+        }
+        None => {
+            template = template.replace("{{ORCID_ID}}", "");
+            template = template.replace("{{ORCID_ICON_DECLARATION}}", "");
+        }
+    }
+
+    template = template.replace("{{LANG}}", &options.lang);
+
+    template
+}
+
+pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
+    let template = get_template(options.template.clone(), options.default_template.clone())?;
+    let template_string = match template {
+        Template::Article(content) => content,
+        Template::Report(content) => content,
+        Template::Custom(content) => content,
+    };
+    let final_string = substitute_template(template_string, &options);
+    Ok(final_string)
 }
 
 // Get the source for the applied template

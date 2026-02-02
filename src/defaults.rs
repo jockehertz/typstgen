@@ -8,3 +8,9 @@ pub const TEMPLATE_DIRECTORY: &str = "typstgen/templates";
 
 pub const REPORT_TEMPLATE_STRING: &str = include_str!("./templates/builtin_report.typ");
 pub const ARTICLE_TEMPLATE_STRING: &str = include_str!("./templates/builtin_article.typ");
+
+pub const DEFAULT_LANG: &str = "en";
+pub const AUTHOR_PLACEHOLDER: &str = "Unknown Author";
+pub const NAME_INFERENCE_DEFAULT: bool = true;
+
+pub const ORCID_IMAGE: &str = include_str!("assets/orcid.svg");
