@@ -10,6 +10,7 @@ use defaults::{DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_
 use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
 
+// A struct representing the options for the typstgen program
 #[derive(Debug)]
 pub struct Options {
     output: String,
@@ -22,8 +23,6 @@ pub struct Options {
     name_inference: bool,
     inferred_name_reformat: bool,
 }
-
-pub struct AutoAuthorFromGit;
 
 fn print_error(message: &str) -> () {
     println!("Error: {}", message);
@@ -134,6 +133,4 @@ fn main() {
     };
 
     let _ = fs::write(file_name, template);
-
-    println!("Hello, world!");
 }

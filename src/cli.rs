@@ -6,10 +6,13 @@ use crate::{
 };
 use clap::Parser;
 
+// This enum represents the different types of errors that can occur during CLI parsing
+// It is currently only with one variant, I expect that more will be added in the future
 pub enum CliError {
     TemplateError(TemplatingError),
 }
 
+// Implement the From trait for converting TemplatingError to CliError
 impl From<TemplatingError> for CliError {
     fn from(error: TemplatingError) -> Self {
         CliError::TemplateError(error)

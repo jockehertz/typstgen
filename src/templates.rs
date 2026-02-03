@@ -10,6 +10,7 @@ use std::fs;
 use std::path::PathBuf;
 use whoami::realname;
 
+// An enum representing the different types of templates available
 #[derive(Debug, Clone)]
 pub enum Template {
     Report(String),
@@ -17,6 +18,7 @@ pub enum Template {
     Custom(String),
 }
 
+// An enum representing the different sources of templates available
 #[derive(Debug, Clone)]
 pub enum TemplateSource {
     BuiltinReport,
@@ -25,6 +27,7 @@ pub enum TemplateSource {
     DefaultTemplate,
 }
 
+// An enum representing the different errors that can occur during templating
 pub enum TemplatingError {
     TemplateNotFound(String),
     NoTemplateDirectory(PathBuf),
@@ -127,16 +130,15 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
                     &format!(" #orcid_svg https://orcid.org/{}", id),
                 );
                 template = template.replace(
-                "{{ORCID_ICON_DECLARATION}}",
-                format!(
-                    "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
-                    ORCID_IMAGE.replace("\"", "\\\""),
-                    ORCID_ICON_SIZE_PT,
-                    ORCID_ICON_SIZE_PT,
-                    ORCID_ICON_SIZE_PT,
-                )
-                .as_str(),
-            );
+                    "{{ORCID_ICON_DECLARATION}}",
+                    format!(
+                        "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+                        ORCID_IMAGE.replace("\"", "\\\""),
+                        ORCID_ICON_SIZE_PT,
+                        ORCID_ICON_SIZE_PT,
+                        ORCID_ICON_SIZE_PT,
+                    ).as_str(),
+                );
             } else {
                 template = template.replace("{{ORCID_ID}}", &id);
             }
