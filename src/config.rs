@@ -8,12 +8,7 @@ use crate::templates::TemplateSource;
 use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
-
-pub enum ConfigError {
-    FileNotFound,
-    InvalidFormat,
-}
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {

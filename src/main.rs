@@ -1,5 +1,4 @@
-// # Get CLI arguments, and build a context object
-
+// Get CLI arguments, and build a context object
 mod cli;
 mod config;
 mod defaults;
@@ -8,12 +7,8 @@ use std::path::PathBuf;
 
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
-use config::{Config, ConfigError, apply_config, apply_default_config, load_config};
-use defaults::{
-    DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT,
-    NAME_INFERENCE_DEFAULT,
-};
-use serde::Deserialize;
+use color_print::cprintln;
+use config::{apply_config, apply_default_config, load_config};
 use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
 
@@ -31,7 +26,7 @@ pub struct Options {
 }
 
 fn print_error(message: &str) -> () {
-    println!("Error: {}", message);
+    cprintln!("<red>Error:</red> {}", message);
 }
 
 fn main() {
@@ -142,4 +137,8 @@ fn main() {
     };
 
     let _ = fs::write(file_name, template);
+
+    if options.debug {
+        cprintln!("<green>File written successfully</green>");
+    }
 }
