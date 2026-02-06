@@ -8,6 +8,7 @@ mod templates;
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
 use defaults::{DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT};
+use serde::Deserialize;
 use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
 
