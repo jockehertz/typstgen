@@ -7,7 +7,9 @@ mod templates;
 
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
-use defaults::{DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT};
+use defaults::{
+    DEFAULT_OUTPUT, DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT,
+};
 use serde::Deserialize;
 use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
@@ -15,7 +17,7 @@ use templates::{TemplateSource, TemplatingError, assemble_template};
 // A struct representing the options for the typstgen program
 #[derive(Debug)]
 pub struct Options {
-    output: String,
+    output: Option<String>,
     template: TemplateSource,
     author: Option<String>,
     orcid: Option<String>,
@@ -129,9 +131,14 @@ fn main() {
         println!("\n\nWriting file...");
     }
 
-    let file_name = match options.output.clone().ends_with(".typ") {
-        true => options.output.clone(),
-        false => format!("{}.typ", options.output.clone()),
+    let file_name = match options.output {
+        Some(output) => output,
+        None => String::from(DEFAULT_OUTPUT),
+    };
+
+    match file_name.ends_with(".typ") {
+        true => file_name.clone(),
+        false => format!("{}.typ", file_name),
     };
 
     let _ = fs::write(file_name, template);

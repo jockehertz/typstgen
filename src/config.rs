@@ -39,3 +39,13 @@ pub fn read_config(config_path: &PathBuf) -> Result<Config, ConfigError> {
         default_author: config.default_author,
     })
 }
+
+pub fn apply_config_to_options(config: &Config, input_options: &Options) -> Options {
+    let options = Options {
+        output: match input_options.output {
+            Some(output) => output,
+            None => None,
+        }
+
+    }
+}

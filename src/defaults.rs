@@ -2,6 +2,7 @@ use crate::templates::TemplateSource;
 
 // The default template to be used
 pub const DEFAULT_TEMPLATE: TemplateSource = TemplateSource::BuiltinReport;
+pub const DEFAULT_OUTPUT: &str = "output";
 
 // This directory is relative to the home directory.
 pub const TEMPLATE_DIRECTORY: &str = "typstgen/templates";

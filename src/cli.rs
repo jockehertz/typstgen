@@ -23,7 +23,7 @@ impl From<TemplatingError> for CliError {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    output: String,
+    output: Option<String>,
     template: Option<String>,
 
     // Flags below this
@@ -42,7 +42,7 @@ pub struct Args {
 
 #[derive(Debug)]
 pub struct FlagOptions {
-    pub output: String,
+    pub output: Option<String>,
     pub template: TemplateSource,
     pub author: Option<String>,
     pub orcid: Option<String>,
