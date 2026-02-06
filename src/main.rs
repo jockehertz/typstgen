@@ -4,11 +4,14 @@ mod cli;
 mod config;
 mod defaults;
 mod templates;
+use std::path::PathBuf;
 
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
+use config::{Config, ConfigError, apply_config, apply_default_config, load_config};
 use defaults::{
-    DEFAULT_OUTPUT, DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT,
+    DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT,
+    NAME_INFERENCE_DEFAULT,
 };
 use serde::Deserialize;
 use std::fs;
@@ -17,12 +20,11 @@ use templates::{TemplateSource, TemplatingError, assemble_template};
 // A struct representing the options for the typstgen program
 #[derive(Debug)]
 pub struct Options {
-    output: Option<String>,
+    output: String,
     template: TemplateSource,
     author: Option<String>,
-    orcid: Option<String>,
+    orcid: String,
     lang: String,
-    default_template: TemplateSource,
     debug: bool,
     name_inference: bool,
     inferred_name_reformat: bool,
@@ -75,17 +77,20 @@ fn main() {
 
     // Initialise the program options struct. This will have lots of match arms later on
     // due to the config file. I'm thinking main will deserialise the config, and then give a helper function in another module the
-    // flag_options struct and the deserialised config to work with.
-    let options = Options {
-        output: flag_options.output,
-        template: flag_options.template,
-        author: flag_options.author,
-        orcid: flag_options.orcid,
-        lang: flag_options.lang,
-        debug: flag_options.debug,
-        default_template: DEFAULT_TEMPLATE,
-        name_inference: NAME_INFERENCE_DEFAULT,
-        inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
+    // flag_options struct and the deserialised _toconfig to work with.
+    let config_path: PathBuf = match dirs::config_dir() {
+        Some(dir) => dir.join("typstgen/config.toml"),
+        None => {
+            print_error("Could not find the configuration directory");
+            return;
+        }
+    };
+
+    let app_config = load_config(&config_path);
+
+    let options = match app_config {
+        Some(config) => apply_config(&config, flag_options),
+        None => apply_default_config(flag_options),
     };
 
     // Print the options struct if in debug mode
@@ -131,14 +136,9 @@ fn main() {
         println!("\n\nWriting file...");
     }
 
-    let file_name = match options.output {
-        Some(output) => output,
-        None => String::from(DEFAULT_OUTPUT),
-    };
-
-    match file_name.ends_with(".typ") {
-        true => file_name.clone(),
-        false => format!("{}.typ", file_name),
+    let file_name = match options.output.ends_with(".typ") {
+        true => options.output.clone(),
+        false => format!("{}.typ", options.output),
     };
 
     let _ = fs::write(file_name, template);

@@ -40,10 +40,10 @@ pub struct Args {
     debug: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FlagOptions {
     pub output: Option<String>,
-    pub template: TemplateSource,
+    pub template: Option<TemplateSource>,
     pub author: Option<String>,
     pub orcid: Option<String>,
     pub lang: String,
@@ -51,9 +51,9 @@ pub struct FlagOptions {
 }
 // Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
-    let template: TemplateSource = match args.template {
-        Some(template) => get_template_source(template)?,
-        None => TemplateSource::DefaultTemplate,
+    let template: Option<TemplateSource> = match args.template {
+        Some(template) => Some(get_template_source(template)?),
+        None => None,
     };
 
     Ok(FlagOptions {

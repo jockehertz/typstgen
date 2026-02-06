@@ -1,6 +1,7 @@
 // This module handles templating
 
 use crate::Options;
+use crate::cli::FlagOptions;
 use crate::defaults::{
     ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_ICON_SIZE_PT, ORCID_IMAGE,
     REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY,
@@ -24,7 +25,6 @@ pub enum TemplateSource {
     BuiltinReport,
     BuiltinArticle,
     Custom(PathBuf),
-    DefaultTemplate,
 }
 
 // An enum representing the different errors that can occur during templating
@@ -40,16 +40,8 @@ const BUILTIN_REPORT_ARG: &str = "report";
 const BUILTIN_ARTICLE_ARG: &str = "article";
 
 // Get a template, builtin or custom
-pub fn get_template(
-    template_source: TemplateSource,
-    default_template: TemplateSource,
-) -> Result<Template, TemplatingError> {
-    let actual_source = match template_source {
-        TemplateSource::DefaultTemplate => default_template,
-        other => other,
-    };
-
-    match actual_source {
+pub fn get_template(template_source: TemplateSource) -> Result<Template, TemplatingError> {
+    match template_source {
         // Builtin report template
         TemplateSource::BuiltinReport => Ok(Template::Report(String::from(REPORT_TEMPLATE_STRING))),
         // Builtin article template
@@ -62,9 +54,6 @@ pub fn get_template(
             Ok(content) => Ok(Template::Custom(content)),
             Err(_) => Err(TemplatingError::CouldNotReadTemplateFile(path)),
         },
-
-        // Default template
-        TemplateSource::DefaultTemplate => unreachable!(),
     }
 }
 
@@ -123,7 +112,7 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
     match options.orcid.clone() {
-        Some(id) => {
+        id => {
             if template.contains("{{ORCID_ICON_DECLARATION}}") {
                 template = template.replace(
                     "{{ORCID_ID}}",
@@ -143,10 +132,6 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
                 template = template.replace("{{ORCID_ID}}", &id);
             }
         }
-        None => {
-            template = template.replace("{{ORCID_ID}}", "");
-            template = template.replace("{{ORCID_ICON_DECLARATION}}", "");
-        }
     }
 
     template = template.replace("{{LANG}}", &options.lang);
@@ -155,7 +140,7 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
 }
 
 pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
-    let template = get_template(options.template.clone(), options.default_template.clone())?;
+    let template = get_template(options.template.clone())?;
     let template_string = match template {
         Template::Article(content) => content,
         Template::Report(content) => content,
