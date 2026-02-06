@@ -1,6 +1,7 @@
 // # Get CLI arguments, and build a context object
 
 mod cli;
+mod config;
 mod defaults;
 mod templates;
 
