@@ -109,8 +109,8 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
         debug: input_options.debug,
 
         lib_file: match config.lib_file.clone() {
-            Some(lib_file) => lib_file,
-            None => String::from(DEFAULT_LIB_FILE),
+            Some(lib_file) => PathBuf::from(lib_file),
+            None => PathBuf::from(DEFAULT_LIB_FILE),
         },
     }
 }
@@ -134,6 +134,6 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
         },
         name_inference: NAME_INFERENCE_DEFAULT,
         inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
-        lib_file: String::from(DEFAULT_LIB_FILE),
+        lib_file: PathBuf::from(DEFAULT_LIB_FILE),
     }
 }

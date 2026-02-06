@@ -70,25 +70,17 @@ fn reformat_author_name(author: &String) -> String {
     }
 }
 
-// Substitute template with options
-fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
-    let mut template = template;
-
-    let lib_file = options.lib_file.clone();
-
+fn lib_file_exists(lib_file: &PathBuf) -> bool {
     match dirs::config_dir() {
-        Some(path) => match path.join("typstgen").join(&lib_file).exists() {
-            true => {
-                template = format!("#import \"{}\": *\n\n {}", lib_file, template);
-            }
-            false => (),
-        },
-        None => (),
+        Some(path) => path.join("typstgen").join(lib_file).exists(),
+        None => false,
     }
+}
 
-    // Get the author name, infer it if git inference is enabled
-    let author = match options.author.clone() {
-        Some(author) => author,
+// Process author name, infer it if git inference is enabled
+fn process_author_name(options: &Options) -> String {
+    match &options.author {
+        Some(author) => author.clone(),
         None => {
             if options.name_inference {
                 match realname() {
@@ -105,37 +97,60 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
                 AUTHOR_PLACEHOLDER.to_string()
             }
         }
+    }
+}
+
+// Substitute ORCID icon declaration and ID into the template
+fn substitute_orcid(template: &String, options: &Options) -> String {
+    let return_template = template.clone();
+    let return_template = if return_template.contains("{{ORCID_ICON_DECLARATION}}") {
+        let orcid_icon = format!(
+            "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+            ORCID_IMAGE.replace("\"", "\\\""),
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+        );
+        return_template
+            .replace(
+                "{{ORCID_ID}}",
+                format!(" #orcid_svg https://orcid.org/{}", &options.orcid).as_str(),
+            )
+            .replace("{{ORCID_ICON_DECLARATION}}", &orcid_icon)
+    } else {
+        return_template.replace(
+            "{{ORCID_ID}}",
+            format!(" | https://orcid.org/{}", &options.orcid).as_str(),
+        )
+    };
+    return return_template;
+}
+
+// Substitute template with options
+fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
+    let template = template;
+
+    let lib_file = options.lib_file.clone();
+
+    let template = if lib_file_exists(&lib_file) {
+        format!("#import \"{}\": *\n\n {}", lib_file.display(), template)
+    } else {
+        template
     };
 
     // Substitute author name, reformatted to last name, first name
-    template = template.replace("{{AUTHOR_NAME}}", &author);
+    let template = template.replace("{{AUTHOR_NAME}}", &process_author_name(&options));
 
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
-    if template.contains("{{ORCID_ICON_DECLARATION}}") {
-        template = template.replace(
-            "{{ORCID_ID}}",
-            &format!(" #orcid_svg https://orcid.org/{}", options.orcid.clone()),
-        );
-        template = template.replace(
-            "{{ORCID_ICON_DECLARATION}}",
-            format!(
-                "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
-                ORCID_IMAGE.replace("\"", "\\\""),
-                ORCID_ICON_SIZE_PT,
-                ORCID_ICON_SIZE_PT,
-                ORCID_ICON_SIZE_PT,
-            ).as_str(),
-        );
-    } else {
-        template = template.replace("{{ORCID_ID}}", &options.orcid);
-    }
+    let template = substitute_orcid(&template, &options);
 
-    template = template.replace("{{LANG}}", &options.lang);
+    let template = template.replace("{{LANG}}", &options.lang);
 
     Ok(template)
 }
 
+// Assemble the template by substituting variables and importing the library file
 pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
     let template = get_template(options.template.clone())?;
     let template_string = match template {

@@ -23,7 +23,7 @@ pub struct Options {
     debug: bool,
     name_inference: bool,
     inferred_name_reformat: bool,
-    lib_file: String,
+    lib_file: PathBuf,
 }
 
 fn print_error(message: &str) -> () {
