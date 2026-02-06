@@ -13,8 +13,13 @@ pub const ARTICLE_TEMPLATE_STRING: &str = include_str!("./templates/builtin_arti
 pub const DEFAULT_LANG: &str = "en";
 pub const AUTHOR_PLACEHOLDER: &str = "Unknown Author";
 pub const NAME_INFERENCE_DEFAULT: bool = true;
-pub const INFERRED_NAME_REFORMAT_DEFAULT: bool = true;
 
+// This is the internationally preferred standard for author names
+pub const INFERRED_NAME_REFORMAT_DEFAULT: bool = false;
+
+// Include the ORCID SVG icon as a string
 pub const ORCID_IMAGE: &str = include_str!("assets/orcid.svg");
 pub const ORCID_ICON_SIZE_PT: f64 = 18.0;
 pub const DEFAULT_ORCID: &str = "0000-0000-0000-0000";
+
+pub const DEFAULT_LIB_FILE: &str = "lib.typ";

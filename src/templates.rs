@@ -1,7 +1,6 @@
 // This module handles templating
 
 use crate::Options;
-use crate::cli::FlagOptions;
 use crate::defaults::{
     ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_ICON_SIZE_PT, ORCID_IMAGE,
     REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY,
@@ -74,15 +73,17 @@ fn reformat_author_name(author: &String) -> String {
 // Substitute template with options
 fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
     let mut template = template;
-    let cfg_dir = match dirs::config_dir() {
-        Some(dir) => dir,
-        None => return Err(TemplatingError::CouldNotFindCfgDir),
-    };
 
-    let lib_file = cfg_dir.join(format!("typstgen/lib.typ"));
+    let lib_file = options.lib_file.clone();
 
-    if lib_file.exists() {
-        template = format!("#include {}\n\n {}", lib_file.display(), template);
+    match dirs::config_dir() {
+        Some(path) => match path.join("typstgen").join(&lib_file).exists() {
+            true => {
+                template = format!("#import \"{}\": *\n\n {}", lib_file, template);
+            }
+            false => (),
+        },
+        None => (),
     }
 
     // Get the author name, infer it if git inference is enabled
@@ -111,27 +112,23 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
 
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
-    match options.orcid.clone() {
-        id => {
-            if template.contains("{{ORCID_ICON_DECLARATION}}") {
-                template = template.replace(
-                    "{{ORCID_ID}}",
-                    &format!(" #orcid_svg https://orcid.org/{}", id),
-                );
-                template = template.replace(
-                    "{{ORCID_ICON_DECLARATION}}",
-                    format!(
-                        "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
-                        ORCID_IMAGE.replace("\"", "\\\""),
-                        ORCID_ICON_SIZE_PT,
-                        ORCID_ICON_SIZE_PT,
-                        ORCID_ICON_SIZE_PT,
-                    ).as_str(),
-                );
-            } else {
-                template = template.replace("{{ORCID_ID}}", &id);
-            }
-        }
+    if template.contains("{{ORCID_ICON_DECLARATION}}") {
+        template = template.replace(
+            "{{ORCID_ID}}",
+            &format!(" #orcid_svg https://orcid.org/{}", options.orcid.clone()),
+        );
+        template = template.replace(
+            "{{ORCID_ICON_DECLARATION}}",
+            format!(
+                "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+                ORCID_IMAGE.replace("\"", "\\\""),
+                ORCID_ICON_SIZE_PT,
+                ORCID_ICON_SIZE_PT,
+                ORCID_ICON_SIZE_PT,
+            ).as_str(),
+        );
+    } else {
+        template = template.replace("{{ORCID_ID}}", &options.orcid);
     }
 
     template = template.replace("{{LANG}}", &options.lang);

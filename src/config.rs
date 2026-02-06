@@ -1,8 +1,8 @@
 use crate::Options;
 use crate::cli::FlagOptions;
 use crate::defaults::{
-    DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT,
-    NAME_INFERENCE_DEFAULT,
+    DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE,
+    INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT,
 };
 use crate::templates::TemplateSource;
 use dirs;
@@ -19,6 +19,7 @@ pub struct Config {
     orcid: Option<String>,
     email: Option<String>,
     default_author: Option<String>,
+    lib_file: Option<String>,
 }
 
 pub fn load_config(config_path: &PathBuf) -> Option<Config> {
@@ -39,6 +40,7 @@ pub fn load_config(config_path: &PathBuf) -> Option<Config> {
         orcid: config.orcid,
         email: config.email,
         default_author: config.default_author,
+        lib_file: config.lib_file,
     })
 }
 
@@ -59,12 +61,12 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
             None => match &config.default_template {
                 Some(name) => {
                     let default_template_path =
-                        dirs::home_dir().unwrap().join("typstgen/templates");
+                        dirs::config_dir().unwrap().join("typstgen/templates");
                     let template_path_reformatted = match name.ends_with("typ") {
                         true => default_template_path.join(name),
                         false => default_template_path.join(format!("{}.typ", name)),
                     };
-                    TemplateSource::Custom(default_template_path.join(template_path_reformatted))
+                    TemplateSource::Custom(template_path_reformatted)
                 }
                 None => DEFAULT_TEMPLATE,
             },
@@ -105,6 +107,11 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
 
         // Get the debug flag
         debug: input_options.debug,
+
+        lib_file: match config.lib_file.clone() {
+            Some(lib_file) => lib_file,
+            None => String::from(DEFAULT_LIB_FILE),
+        },
     }
 }
 
@@ -127,5 +134,6 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
         },
         name_inference: NAME_INFERENCE_DEFAULT,
         inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
+        lib_file: String::from(DEFAULT_LIB_FILE),
     }
 }

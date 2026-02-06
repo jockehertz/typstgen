@@ -23,6 +23,7 @@ pub struct Options {
     debug: bool,
     name_inference: bool,
     inferred_name_reformat: bool,
+    lib_file: String,
 }
 
 fn print_error(message: &str) -> () {
@@ -83,9 +84,20 @@ fn main() {
 
     let app_config = load_config(&config_path);
 
+    // Load the config file if it exists, otherwise load the default configuration
     let options = match app_config {
-        Some(config) => apply_config(&config, flag_options),
-        None => apply_default_config(flag_options),
+        Some(config) => {
+            if flag_options.debug {
+                cprintln!("<green>Config file loaded</green>");
+            }
+            apply_config(&config, flag_options)
+        }
+        None => {
+            if flag_options.debug {
+                cprintln!("<yellow>No config file found, loading default configuration</yellow>");
+            }
+            apply_default_config(flag_options)
+        }
     };
 
     // Print the options struct if in debug mode
@@ -93,6 +105,7 @@ fn main() {
         println!("Options struct: {:?}", options);
     }
 
+    // Assemble the template given the options
     let template = match assemble_template(&options) {
         Ok(template) => template,
         Err(error) => match error {
@@ -136,9 +149,35 @@ fn main() {
         false => format!("{}.typ", options.output),
     };
 
-    let _ = fs::write(file_name, template);
+    let lib_file_path = match dirs::config_dir() {
+        Some(path) => match path.join("typstgen").join(&options.lib_file).exists() {
+            true => Some(path.join("typstgen").join(&options.lib_file)),
+            false => None,
+        },
+        None => None,
+    };
+    // Copy the library file if it exists
+    match lib_file_path {
+        Some(path) => {
+            let copy_lib = fs::copy(path, options.lib_file.clone());
+            match copy_lib {
+                Ok(_) => cprintln!("<green>Library file copied successfully</green>"),
+                Err(_) => print_error("Could not copy library file"),
+            }
+        }
+        None => {
+            if options.debug {
+                print_error("Could not find library file");
+            }
+        }
+    }
+
+    let written = fs::write(file_name, template);
 
     if options.debug {
-        cprintln!("<green>File written successfully</green>");
+        match written {
+            Ok(_) => cprintln!("<green>File written successfully</green>"),
+            Err(_) => print_error("Could not write file"),
+        }
     }
 }
