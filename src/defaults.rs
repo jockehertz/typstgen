@@ -12,6 +12,7 @@ pub const ARTICLE_TEMPLATE_STRING: &str = include_str!("./templates/builtin_arti
 
 pub const DEFAULT_LANG: &str = "en";
 pub const AUTHOR_PLACEHOLDER: &str = "Unknown Author";
+pub const DEFAULT_EMAIL: &str = "unknown@example.com";
 pub const NAME_INFERENCE_DEFAULT: bool = true;
 
 // Include the ORCID SVG icon as a string

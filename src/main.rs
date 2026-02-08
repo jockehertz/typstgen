@@ -19,6 +19,7 @@ pub struct Options {
     template: TemplateSource,
     author: String,
     orcid: String,
+    email: String,
     lang: String,
     debug: bool,
     lib_file: PathBuf,
@@ -61,9 +62,6 @@ fn main() {
         },
     };
 
-    // Initialise the program options struct. This will have lots of match arms later on
-    // due to the config file. I'm thinking main will deserialise the config, and then give a helper function in another module the
-    // flag_options struct and the deserialised _toconfig to work with.
     let config_path: PathBuf = match dirs::config_dir() {
         Some(dir) => dir.join("typstgen/config.toml"),
         None => {
@@ -159,10 +157,12 @@ fn main() {
     // Write the template to the file
     let written = fs::write(file_name, template);
 
-    if options.debug {
-        match written {
-            Ok(_) => cprintln!("<green>File written successfully</green>"),
-            Err(_) => print_error("Could not write file"),
+    match written {
+        Ok(_) => {
+            if options.debug {
+                cprintln!("<green>File written successfully</green>");
+            }
         }
+        Err(_) => print_error("Could not write file"),
     }
 }

@@ -107,6 +107,8 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
 
     let template = template.replace("{{LANG}}", &options.lang);
 
+    let template = template.replace("{{EMAIL}}", &options.email);
+
     Ok(template)
 }
 

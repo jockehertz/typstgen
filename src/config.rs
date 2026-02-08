@@ -1,8 +1,8 @@
 use crate::Options;
 use crate::cli::FlagOptions;
 use crate::defaults::{
-    AUTHOR_PLACEHOLDER, DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE,
-    NAME_INFERENCE_DEFAULT,
+    AUTHOR_PLACEHOLDER, DEFAULT_EMAIL, DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT,
+    DEFAULT_TEMPLATE, NAME_INFERENCE_DEFAULT,
 };
 use crate::templates::TemplateSource;
 use dirs;
@@ -113,6 +113,8 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
             Some(lib_file) => PathBuf::from(lib_file),
             None => PathBuf::from(DEFAULT_LIB_FILE),
         },
+
+        email: config.email.clone().unwrap_or(String::from(DEFAULT_EMAIL)),
     }
 }
 
@@ -136,5 +138,6 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
             None => String::from(DEFAULT_ORCID),
         },
         lib_file: PathBuf::from(DEFAULT_LIB_FILE),
+        email: String::from(DEFAULT_EMAIL),
     }
 }
