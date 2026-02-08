@@ -141,3 +141,70 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
         email: String::from(DEFAULT_EMAIL),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_apply_default_config() {
+        let input_options = FlagOptions {
+            output: Some(String::from("output")),
+            lang: String::from("en"),
+            debug: true,
+            template: Some(TemplateSource::BuiltinReport),
+            author: Some(String::from("John Doe")),
+            orcid: Some(String::from("0000-0002-1825-0097")),
+        };
+
+        let expected_options = Options {
+            output: String::from("output"),
+            lang: String::from("en"),
+            debug: true,
+            template: TemplateSource::BuiltinReport,
+            author: String::from("John Doe"),
+            orcid: String::from("0000-0002-1825-0097"),
+            lib_file: PathBuf::from(DEFAULT_LIB_FILE),
+            email: String::from(DEFAULT_EMAIL),
+        };
+
+        let options = apply_default_config(input_options);
+        assert_eq!(options, expected_options);
+    }
+
+    #[test]
+    fn test_apply_config() {
+        let config = Config {
+            default_output: Some(String::from("look_at_me_i_am_default")),
+            default_template: None,
+            default_author: Some(String::from("Jane Doe")),
+            orcid: Some(String::from("0000-0002-1825-0098")),
+            lib_file: Some(String::from("default_lib_file")),
+            email: Some(String::from("jane.doe@example.com")),
+            name_inference: None,
+        };
+
+        let input = FlagOptions {
+            output: None,
+            lang: String::from("en"),
+            debug: false,
+            template: Some(TemplateSource::BuiltinReport),
+            author: Some(String::from("Jane Doe")),
+            orcid: Some(String::from("0000-0002-1825-0098")),
+        };
+
+        let expected_options = Options {
+            output: String::from("look_at_me_i_am_default"),
+            lang: String::from("en"),
+            debug: false,
+            template: TemplateSource::BuiltinReport,
+            author: String::from("Jane Doe"),
+            orcid: String::from("0000-0002-1825-0098"),
+            lib_file: PathBuf::from("default_lib_file"),
+            email: String::from("jane.doe@example.com"),
+        };
+
+        let options = apply_config(&config, input);
+        assert_eq!(options, expected_options);
+    }
+}

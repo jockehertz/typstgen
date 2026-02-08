@@ -13,7 +13,7 @@ use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
 
 // A struct representing the options for the typstgen program
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Options {
     output: String,
     template: TemplateSource,
