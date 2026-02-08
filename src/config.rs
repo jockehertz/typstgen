@@ -142,6 +142,7 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
     }
 }
 
+// TESTS
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,5 +207,12 @@ mod tests {
 
         let options = apply_config(&config, input);
         assert_eq!(options, expected_options);
+    }
+
+    #[test]
+    fn test_process_author_name() {
+        let author = None;
+        let name = process_author_name(author, None, Some(false));
+        assert_eq!(name, String::from(AUTHOR_PLACEHOLDER));
     }
 }
