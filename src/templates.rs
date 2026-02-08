@@ -5,7 +5,6 @@ use crate::defaults::{
     ARTICLE_TEMPLATE_STRING, ORCID_ICON_SIZE_PT, ORCID_IMAGE, REPORT_TEMPLATE_STRING,
     TEMPLATE_DIRECTORY,
 };
-use dirs;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -30,8 +29,8 @@ pub enum TemplateSource {
 pub enum TemplatingError {
     TemplateNotFound(String),
     NoTemplateDirectory(PathBuf),
-    CouldNotFindCfgDir,
     CouldNotReadTemplateFile(PathBuf),
+    NoCfgDirectory,
 }
 
 const BUILTIN_REPORT_ARG: &str = "report";
@@ -56,10 +55,11 @@ pub fn get_template(template_source: TemplateSource) -> Result<Template, Templat
     }
 }
 
-fn lib_file_exists(lib_file: impl AsRef<Path>) -> bool {
-    match dirs::config_dir() {
-        Some(path) => path.join("typstgen").join(lib_file).exists(),
-        None => false,
+fn lib_file_exists(lib_file: impl AsRef<Path>, config_dir: &PathBuf) -> bool {
+    if config_dir.join(lib_file).exists() {
+        true
+    } else {
+        false
     }
 }
 
@@ -90,13 +90,22 @@ fn substitute_orcid(template: &str, options: &Options) -> String {
 }
 
 // Substitute template with options
-fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
+fn substitute_template(
+    template: String,
+    options: &Options,
+    config_dir: &Option<PathBuf>,
+) -> Result<String, TemplatingError> {
     let lib_file = options.lib_file.clone();
 
-    let template = if lib_file_exists(&lib_file) {
-        format!("#import \"{}\": *\n\n {}", lib_file.display(), template)
-    } else {
-        template
+    let template = match config_dir {
+        Some(dir) => {
+            if lib_file_exists(&lib_file, dir) {
+                format!("#import \"{}\": *\n\n {}", lib_file.display(), template)
+            } else {
+                template
+            }
+        }
+        None => template,
     };
 
     // Substitute author name, reformatted to last name, first name
@@ -114,30 +123,33 @@ fn substitute_template(template: String, options: &Options) -> Result<String, Te
 }
 
 // Assemble the template by substituting variables and importing the library file
-pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
+pub fn assemble_template(
+    options: &Options,
+    config_dir: &Option<PathBuf>,
+) -> Result<String, TemplatingError> {
     let template = get_template(options.template.clone())?;
     let template_string = match template {
         Template::Article(content) => content,
         Template::Report(content) => content,
         Template::Custom(content) => content,
     };
-    let final_string = substitute_template(template_string, &options)?;
+    let final_string = substitute_template(template_string, &options, config_dir)?;
     Ok(final_string)
 }
 
 // Get the source for the applied template
-pub fn get_template_source(template_name: &str) -> Result<TemplateSource, TemplatingError> {
+pub fn get_template_source(
+    template_name: &str,
+    config_path: &Option<PathBuf>,
+) -> Result<TemplateSource, TemplatingError> {
     match template_name {
         BUILTIN_REPORT_ARG => Ok(TemplateSource::BuiltinReport),
         BUILTIN_ARTICLE_ARG => Ok(TemplateSource::BuiltinArticle),
         other_name => {
-            let mut template_path = PathBuf::new();
-            let config_path = match dirs::config_dir() {
-                Some(path) => path,
-                None => return Err(TemplatingError::CouldNotFindCfgDir),
+            let template_path = match config_path {
+                Some(path) => path.join(TEMPLATE_DIRECTORY),
+                None => return Err(TemplatingError::NoCfgDirectory),
             };
-            template_path.push(config_path);
-            template_path.push(TEMPLATE_DIRECTORY);
 
             // If there is no template directory, return an error here
             if !template_path.exists() {
@@ -146,11 +158,10 @@ pub fn get_template_source(template_name: &str) -> Result<TemplateSource, Templa
 
             // Check if the user gave the template file with or without the .typ extenstion
 
-            if other_name.ends_with(".typ") {
-                template_path.push(other_name);
+            let template_path = if other_name.ends_with(".typ") {
+                template_path.join(other_name)
             } else {
-                template_path.push(other_name);
-                template_path.set_extension("typ");
+                template_path.join(format!("{}.typ", other_name))
             };
 
             // Check that the template exists
@@ -166,6 +177,8 @@ pub fn get_template_source(template_name: &str) -> Result<TemplateSource, Templa
 #[cfg(test)]
 mod test {
     use super::*;
+    use fs;
+    use tempfile::tempdir;
 
     #[test]
     fn test_substitute_orcid() {
@@ -200,7 +213,10 @@ mod test {
             lib_file: PathBuf::from("lib.typ"),
             orcid: String::from("0000-0002-1825-0097"),
         };
-        let result = substitute_template(template, &options).ok().unwrap();
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
         assert!(result.contains("John Doe"));
         assert!(!result.contains("{{AUTHOR_NAME}}"));
     }
@@ -218,7 +234,10 @@ mod test {
             lib_file: PathBuf::from("lib.typ"),
             orcid: String::from("0000-0002-1825-0097"),
         };
-        let result = substitute_template(template, &options).ok().unwrap();
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
         assert!(result.contains("john.doe@example.com"));
         assert!(!result.contains("{{EMAIL}}"));
     }
@@ -236,25 +255,10 @@ mod test {
             lib_file: PathBuf::from("lib.typ"),
             orcid: String::from("0000-0002-1825-0097"),
         };
-        let result = substitute_template(template, &options).ok().unwrap();
-        assert!(result.contains("en"));
-        assert!(!result.contains("{{LANG}}"));
-    }
-
-    #[test]
-    fn test_substitute_debug() {
-        let template = String::from("{{LANG}}");
-        let options = Options {
-            output: String::from("output"),
-            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
-            author: String::from("John Doe"),
-            email: String::from("john.doe@example.com"),
-            lang: String::from("en"),
-            debug: true,
-            lib_file: PathBuf::from("lib.typ"),
-            orcid: String::from("0000-0002-1825-0097"),
-        };
-        let result = substitute_template(template, &options).ok().unwrap();
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
         assert!(result.contains("en"));
         assert!(!result.contains("{{LANG}}"));
     }
@@ -272,7 +276,10 @@ mod test {
             lib_file: PathBuf::from("lib.typ"),
             orcid: String::from("0000-0002-1825-0097"),
         };
-        let result = substitute_template(template, &options).ok().unwrap();
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
         assert!(result.contains("John Doe john.doe@example.com"));
         assert!(!result.contains("{{AUTHOR_NAME}}"));
         assert!(!result.contains("{{EMAIL}}"));
@@ -291,9 +298,39 @@ mod test {
             lib_file: PathBuf::from("lib.typ"),
             orcid: String::from("0000-0002-1825-0097"),
         };
-        let result = substitute_template(template, &options).ok().unwrap();
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
         assert!(result.contains("John Doe | https://orcid.org/0000-0002-1825-0097"));
         assert!(!result.contains("{{ORCID_ID}}"));
         assert!(!result.contains("{{AUTHOR_NAME}}"));
+    }
+
+    #[test]
+    fn test_get_source() {
+        let template_string = String::from("{{AUTHOR_NAME}}{{ORCID_ID}}");
+        let cfg_dir = match tempdir() {
+            Ok(dir) => Some(dir.path().to_path_buf()),
+            Err(_) => None,
+        };
+
+        let templates_path = cfg_dir.as_ref().unwrap().clone().join(TEMPLATE_DIRECTORY);
+        fs::create_dir_all(&templates_path).unwrap();
+        let _ = fs::write(
+            cfg_dir
+                .as_ref()
+                .unwrap()
+                .clone()
+                .join("templates/my_template.typ"),
+            template_string,
+        )
+        .unwrap();
+        let template_name = String::from("my_template.typ");
+        let source = get_template_source(&template_name, &Some(cfg_dir.clone().unwrap()));
+        let expected = Ok(TemplateSource::Custom(
+            cfg_dir.unwrap().join("templates/my_template.typ"),
+        ));
+        assert_eq!(source, expected);
     }
 }

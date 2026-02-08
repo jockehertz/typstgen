@@ -3,6 +3,7 @@ mod cli;
 mod config;
 mod defaults;
 mod templates;
+use dirs;
 use std::path::PathBuf;
 
 use crate::cli::{Args, CliError, parse_cli_args};
@@ -33,13 +34,21 @@ fn main() {
     // Collect the CLI arguments
     let args = Args::parse();
 
+    let config_dir: Option<PathBuf> = match dirs::config_dir() {
+        Some(dir) => Some(dir.join("typstgen")),
+        None => {
+            print_error("Could not find the configuration directory");
+            None
+        }
+    };
+
     // Get the options from CLI argument, with error handling
-    let flag_options = match parse_cli_args(args) {
+    let flag_options = match parse_cli_args(args, &config_dir) {
         Ok(opts) => opts,
         Err(cli_error) => match cli_error {
             CliError::TemplateError(template_error) => match template_error {
-                TemplatingError::CouldNotFindCfgDir => {
-                    print_error("Could not find the user's configuration directory");
+                TemplatingError::NoCfgDirectory => {
+                    print_error("Could not find the configuration directory");
                     return;
                 }
                 TemplatingError::CouldNotReadTemplateFile(filepath) => {
@@ -62,7 +71,7 @@ fn main() {
         },
     };
 
-    let config_path: PathBuf = match dirs::config_dir() {
+    let config_file_path: PathBuf = match config_dir.clone() {
         Some(dir) => dir.join("typstgen/config.toml"),
         None => {
             print_error("Could not find the configuration directory");
@@ -70,7 +79,7 @@ fn main() {
         }
     };
 
-    let app_config = load_config(&config_path);
+    let app_config = load_config(&config_file_path);
 
     // Load the config file if it exists, otherwise load the default configuration
     let options = match app_config {
@@ -78,7 +87,7 @@ fn main() {
             if flag_options.debug {
                 cprintln!("<green>Config file loaded</green>");
             }
-            apply_config(&config, flag_options)
+            apply_config(&config, flag_options, &config_dir)
         }
         None => {
             if flag_options.debug {
@@ -94,10 +103,10 @@ fn main() {
     }
 
     // Assemble the template given the options
-    let template = match assemble_template(&options) {
+    let template = match assemble_template(&options, &config_dir) {
         Ok(template) => template,
         Err(error) => match error {
-            TemplatingError::CouldNotFindCfgDir => {
+            TemplatingError::NoCfgDirectory => {
                 print_error("Could not find the configuration directory");
                 return;
             }
@@ -131,7 +140,7 @@ fn main() {
         false => format!("{}.typ", options.output),
     };
 
-    let lib_file_path = match dirs::config_dir() {
+    let lib_file_path = match config_dir {
         Some(path) => match path.join("typstgen").join(&options.lib_file).exists() {
             true => Some(path.join("typstgen").join(&options.lib_file)),
             false => None,

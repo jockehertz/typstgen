@@ -2,10 +2,9 @@ use crate::Options;
 use crate::cli::FlagOptions;
 use crate::defaults::{
     AUTHOR_PLACEHOLDER, DEFAULT_EMAIL, DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT,
-    DEFAULT_TEMPLATE, NAME_INFERENCE_DEFAULT,
+    DEFAULT_TEMPLATE, NAME_INFERENCE_DEFAULT, TEMPLATE_DIRECTORY,
 };
 use crate::templates::TemplateSource;
-use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -58,7 +57,11 @@ pub fn load_config(config_path: impl AsRef<Path>) -> Option<Config> {
     })
 }
 
-pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
+pub fn apply_config(
+    config: &Config,
+    input_options: FlagOptions,
+    config_dir: &Option<PathBuf>,
+) -> Options {
     Options {
         // Get the output name from the config if none is provided
         output: input_options
@@ -71,8 +74,8 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
             Some(template) => template,
             None => match &config.default_template {
                 Some(name) => {
-                    let default_template_path = match dirs::config_dir() {
-                        Some(dir) => Some(dir.join("typstgen/templates")),
+                    let default_template_path = match config_dir {
+                        Some(dir) => Some(dir.join(TEMPLATE_DIRECTORY)),
                         None => None,
                     };
                     match default_template_path {
@@ -146,6 +149,7 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn test_apply_default_config() {
@@ -175,6 +179,7 @@ mod tests {
 
     #[test]
     fn test_apply_config() {
+        let config_dir = Some(tempdir().unwrap().path().to_path_buf());
         let config = Config {
             default_output: Some(String::from("look_at_me_i_am_default")),
             default_template: None,
@@ -205,7 +210,7 @@ mod tests {
             email: String::from("jane.doe@example.com"),
         };
 
-        let options = apply_config(&config, input);
+        let options = apply_config(&config, input, &config_dir);
         assert_eq!(options, expected_options);
     }
 

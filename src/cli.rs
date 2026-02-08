@@ -6,6 +6,8 @@ use crate::{
 };
 use clap::Parser;
 
+use std::path::PathBuf;
+
 // This enum represents the different types of errors that can occur during CLI parsing
 // It is currently only with one variant, I expect that more will be added in the future
 #[derive(Debug, PartialEq)]
@@ -51,11 +53,11 @@ pub struct FlagOptions {
     pub debug: bool,
 }
 // Parse the CLI arguments into an Options struct
-pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
+pub fn parse_cli_args(args: Args, config_path: &Option<PathBuf>) -> Result<FlagOptions, CliError> {
     let template: Option<TemplateSource> = args
         .template
         .as_ref()
-        .map(|s| get_template_source(s))
+        .map(|s| get_template_source(s, config_path))
         .transpose()?;
 
     Ok(FlagOptions {
