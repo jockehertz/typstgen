@@ -18,7 +18,7 @@ pub enum Template {
 }
 
 // An enum representing the different sources of templates available
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TemplateSource {
     BuiltinReport,
     BuiltinArticle,
@@ -26,6 +26,7 @@ pub enum TemplateSource {
 }
 
 // An enum representing the different errors that can occur during templating
+#[derive(Debug, PartialEq)]
 pub enum TemplatingError {
     TemplateNotFound(String),
     NoTemplateDirectory(PathBuf),
@@ -159,5 +160,140 @@ pub fn get_template_source(template_name: &str) -> Result<TemplateSource, Templa
                 return Err(TemplatingError::TemplateNotFound(String::from(other_name)));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_substitute_orcid() {
+        let template = String::from("{{ORCID_ID}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_orcid(&template, &options);
+        assert_eq!(
+            result,
+            String::from(" | https://orcid.org/0000-0002-1825-0097")
+        );
+    }
+
+    #[test]
+    fn test_substitute_author() {
+        let template = String::from("{{AUTHOR_NAME}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("John Doe"));
+        assert!(!result.contains("{{AUTHOR_NAME}}"));
+    }
+
+    #[test]
+    fn test_substitute_email() {
+        let template = String::from("{{EMAIL}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("john.doe@example.com"));
+        assert!(!result.contains("{{EMAIL}}"));
+    }
+
+    #[test]
+    fn test_substitute_lang() {
+        let template = String::from("{{LANG}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("en"));
+        assert!(!result.contains("{{LANG}}"));
+    }
+
+    #[test]
+    fn test_substitute_debug() {
+        let template = String::from("{{LANG}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: true,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("en"));
+        assert!(!result.contains("{{LANG}}"));
+    }
+
+    #[test]
+    fn test_substitute_author_and_email() {
+        let template = String::from("{{AUTHOR_NAME}} {{EMAIL}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("John Doe john.doe@example.com"));
+        assert!(!result.contains("{{AUTHOR_NAME}}"));
+        assert!(!result.contains("{{EMAIL}}"));
+    }
+
+    #[test]
+    fn test_substitute_orcid_and_author() {
+        let template = String::from("{{AUTHOR_NAME}}{{ORCID_ID}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let result = substitute_template(template, &options).ok().unwrap();
+        assert!(result.contains("John Doe | https://orcid.org/0000-0002-1825-0097"));
+        assert!(!result.contains("{{ORCID_ID}}"));
+        assert!(!result.contains("{{AUTHOR_NAME}}"));
     }
 }

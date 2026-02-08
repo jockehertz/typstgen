@@ -8,6 +8,7 @@ use clap::Parser;
 
 // This enum represents the different types of errors that can occur during CLI parsing
 // It is currently only with one variant, I expect that more will be added in the future
+#[derive(Debug, PartialEq)]
 pub enum CliError {
     TemplateError(TemplatingError),
 }
@@ -20,7 +21,7 @@ impl From<TemplatingError> for CliError {
 }
 
 // The struct for the CLI arguments
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, PartialEq)]
 #[command(version, about, long_about = None)]
 pub struct Args {
     output: Option<String>,
@@ -40,7 +41,7 @@ pub struct Args {
     debug: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FlagOptions {
     pub output: Option<String>,
     pub template: Option<TemplateSource>,
