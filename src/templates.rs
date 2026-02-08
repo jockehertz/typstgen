@@ -55,14 +55,6 @@ pub fn get_template(template_source: TemplateSource) -> Result<Template, Templat
     }
 }
 
-fn lib_file_exists(lib_file: impl AsRef<Path>, config_dir: &PathBuf) -> bool {
-    if config_dir.join(lib_file).exists() {
-        true
-    } else {
-        false
-    }
-}
-
 // Substitute ORCID icon declaration and ID into the template
 fn substitute_orcid(template: &str, options: &Options) -> String {
     let return_template = if template.contains("{{ORCID_ICON_DECLARATION}}") {
@@ -99,7 +91,7 @@ fn substitute_template(
 
     let template = match config_dir {
         Some(dir) => {
-            if lib_file_exists(&lib_file, dir) {
+            if dir.join(&lib_file).exists() {
                 format!("#import \"{}\": *\n\n {}", lib_file.display(), template)
             } else {
                 template
