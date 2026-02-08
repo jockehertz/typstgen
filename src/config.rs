@@ -8,7 +8,7 @@ use crate::templates::TemplateSource;
 use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use whoami::realname;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -28,32 +28,16 @@ fn process_author_name(
     config_default: Option<String>,
     infer_name: Option<bool>,
 ) -> String {
-    match &author {
-        Some(author) => author.clone(),
-        None => match config_default {
-            Some(default) => default,
-            None => match infer_name {
-                Some(true) => match realname() {
-                    Ok(username) => username,
-                    Err(_) => AUTHOR_PLACEHOLDER.to_string(),
-                },
-                Some(false) => AUTHOR_PLACEHOLDER.to_string(),
-                None => {
-                    if NAME_INFERENCE_DEFAULT {
-                        match realname() {
-                            Ok(username) => username,
-                            Err(_) => AUTHOR_PLACEHOLDER.to_string(),
-                        }
-                    } else {
-                        AUTHOR_PLACEHOLDER.to_string()
-                    }
-                }
-            },
-        },
-    }
+    author.or(config_default).unwrap_or_else(|| {
+        if infer_name.unwrap_or(NAME_INFERENCE_DEFAULT) {
+            realname().unwrap_or(String::from(AUTHOR_PLACEHOLDER))
+        } else {
+            String::from(AUTHOR_PLACEHOLDER)
+        }
+    })
 }
 
-pub fn load_config(config_path: &PathBuf) -> Option<Config> {
+pub fn load_config(config_path: impl AsRef<Path>) -> Option<Config> {
     // Implementation goes here
     let config_file = match fs::read_to_string(config_path) {
         Ok(file) => file,

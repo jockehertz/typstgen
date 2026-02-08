@@ -7,7 +7,7 @@ use crate::defaults::{
 };
 use dirs;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // An enum representing the different types of templates available
 #[derive(Debug, Clone)]
@@ -55,7 +55,7 @@ pub fn get_template(template_source: TemplateSource) -> Result<Template, Templat
     }
 }
 
-fn lib_file_exists(lib_file: &PathBuf) -> bool {
+fn lib_file_exists(lib_file: impl AsRef<Path>) -> bool {
     match dirs::config_dir() {
         Some(path) => path.join("typstgen").join(lib_file).exists(),
         None => false,
@@ -63,7 +63,7 @@ fn lib_file_exists(lib_file: &PathBuf) -> bool {
 }
 
 // Substitute ORCID icon declaration and ID into the template
-fn substitute_orcid(template: &String, options: &Options) -> String {
+fn substitute_orcid(template: &str, options: &Options) -> String {
     let return_template = if template.contains("{{ORCID_ICON_DECLARATION}}") {
         let orcid_icon = format!(
             "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
@@ -123,8 +123,8 @@ pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
 }
 
 // Get the source for the applied template
-pub fn get_template_source(template_name: String) -> Result<TemplateSource, TemplatingError> {
-    match template_name.as_str() {
+pub fn get_template_source(template_name: &str) -> Result<TemplateSource, TemplatingError> {
+    match template_name {
         BUILTIN_REPORT_ARG => Ok(TemplateSource::BuiltinReport),
         BUILTIN_ARTICLE_ARG => Ok(TemplateSource::BuiltinArticle),
         other_name => {

@@ -51,10 +51,11 @@ pub struct FlagOptions {
 }
 // Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
-    let template: Option<TemplateSource> = match args.template {
-        Some(template) => Some(get_template_source(template)?),
-        None => None,
-    };
+    let template: Option<TemplateSource> = args
+        .template
+        .as_ref()
+        .map(|s| get_template_source(s))
+        .transpose()?;
 
     Ok(FlagOptions {
         output: args.output,
