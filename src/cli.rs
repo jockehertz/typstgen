@@ -23,7 +23,7 @@ impl From<TemplatingError> for CliError {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    output: String,
+    output: Option<String>,
     template: Option<String>,
 
     // Flags below this
@@ -40,10 +40,10 @@ pub struct Args {
     debug: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FlagOptions {
-    pub output: String,
-    pub template: TemplateSource,
+    pub output: Option<String>,
+    pub template: Option<TemplateSource>,
     pub author: Option<String>,
     pub orcid: Option<String>,
     pub lang: String,
@@ -51,10 +51,11 @@ pub struct FlagOptions {
 }
 // Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args) -> Result<FlagOptions, CliError> {
-    let template: TemplateSource = match args.template {
-        Some(template) => get_template_source(template)?,
-        None => TemplateSource::DefaultTemplate,
-    };
+    let template: Option<TemplateSource> = args
+        .template
+        .as_ref()
+        .map(|s| get_template_source(s))
+        .transpose()?;
 
     Ok(FlagOptions {
         output: args.output,

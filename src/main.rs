@@ -1,12 +1,14 @@
-// # Get CLI arguments, and build a context object
-
+// Get CLI arguments, and build a context object
 mod cli;
+mod config;
 mod defaults;
 mod templates;
+use std::path::PathBuf;
 
 use crate::cli::{Args, CliError, parse_cli_args};
 use clap::Parser;
-use defaults::{DEFAULT_TEMPLATE, INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT};
+use color_print::cprintln;
+use config::{apply_config, apply_default_config, load_config};
 use std::fs;
 use templates::{TemplateSource, TemplatingError, assemble_template};
 
@@ -15,17 +17,16 @@ use templates::{TemplateSource, TemplatingError, assemble_template};
 pub struct Options {
     output: String,
     template: TemplateSource,
-    author: Option<String>,
-    orcid: Option<String>,
+    author: String,
+    orcid: String,
+    email: String,
     lang: String,
-    default_template: TemplateSource,
     debug: bool,
-    name_inference: bool,
-    inferred_name_reformat: bool,
+    lib_file: PathBuf,
 }
 
 fn print_error(message: &str) -> () {
-    println!("Error: {}", message);
+    cprintln!("<red>Error:</red> {}", message);
 }
 
 fn main() {
@@ -43,21 +44,13 @@ fn main() {
                 }
                 TemplatingError::CouldNotReadTemplateFile(filepath) => {
                     print_error(
-                        format!(
-                            "Could not find template file at {}",
-                            filepath.to_str().unwrap()
-                        )
-                        .as_str(),
+                        format!("Could not find template file at {}", filepath.display()).as_str(),
                     );
                     return;
                 }
                 TemplatingError::NoTemplateDirectory(dir_path) => {
                     print_error(
-                        format!(
-                            "The {} directory does not exist.",
-                            dir_path.to_str().unwrap()
-                        )
-                        .as_str(),
+                        format!("The {} directory does not exist.", dir_path.display()).as_str(),
                     );
                     return;
                 }
@@ -69,19 +62,30 @@ fn main() {
         },
     };
 
-    // Initialise the program options struct. This will have lots of match arms later on
-    // due to the config file. I'm thinking main will deserialise the config, and then give a helper function in another module the
-    // flag_options struct and the deserialised config to work with.
-    let options = Options {
-        output: flag_options.output,
-        template: flag_options.template,
-        author: flag_options.author,
-        orcid: flag_options.orcid,
-        lang: flag_options.lang,
-        debug: flag_options.debug,
-        default_template: DEFAULT_TEMPLATE,
-        name_inference: NAME_INFERENCE_DEFAULT,
-        inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
+    let config_path: PathBuf = match dirs::config_dir() {
+        Some(dir) => dir.join("typstgen/config.toml"),
+        None => {
+            print_error("Could not find the configuration directory");
+            return;
+        }
+    };
+
+    let app_config = load_config(&config_path);
+
+    // Load the config file if it exists, otherwise load the default configuration
+    let options = match app_config {
+        Some(config) => {
+            if flag_options.debug {
+                cprintln!("<green>Config file loaded</green>");
+            }
+            apply_config(&config, flag_options)
+        }
+        None => {
+            if flag_options.debug {
+                cprintln!("<yellow>No config file found, loading default configuration</yellow>");
+            }
+            apply_default_config(flag_options)
+        }
     };
 
     // Print the options struct if in debug mode
@@ -89,6 +93,7 @@ fn main() {
         println!("Options struct: {:?}", options);
     }
 
+    // Assemble the template given the options
     let template = match assemble_template(&options) {
         Ok(template) => template,
         Err(error) => match error {
@@ -97,18 +102,12 @@ fn main() {
                 return;
             }
             TemplatingError::CouldNotReadTemplateFile(filepath) => {
-                print_error(
-                    format!("Could not read file at {}", filepath.to_str().unwrap()).as_str(),
-                );
+                print_error(format!("Could not read file at {}", filepath.display()).as_str());
                 return;
             }
             TemplatingError::NoTemplateDirectory(dir_path) => {
                 print_error(
-                    format!(
-                        "The {} directory does not exist",
-                        dir_path.to_str().unwrap()
-                    )
-                    .as_str(),
+                    format!("The {} directory does not exist", dir_path.display()).as_str(),
                 );
                 return;
             }
@@ -127,10 +126,43 @@ fn main() {
         println!("\n\nWriting file...");
     }
 
-    let file_name = match options.output.clone().ends_with(".typ") {
+    let file_name = match options.output.ends_with(".typ") {
         true => options.output.clone(),
-        false => format!("{}.typ", options.output.clone()),
+        false => format!("{}.typ", options.output),
     };
 
-    let _ = fs::write(file_name, template);
+    let lib_file_path = match dirs::config_dir() {
+        Some(path) => match path.join("typstgen").join(&options.lib_file).exists() {
+            true => Some(path.join("typstgen").join(&options.lib_file)),
+            false => None,
+        },
+        None => None,
+    };
+    // Copy the library file if it exists
+    match lib_file_path {
+        Some(path) => {
+            let copy_lib = fs::copy(path, options.lib_file.clone());
+            match copy_lib {
+                Ok(_) => cprintln!("<green>Library file copied successfully</green>"),
+                Err(_) => print_error("Could not copy library file"),
+            }
+        }
+        None => {
+            if options.debug {
+                print_error("Could not find library file");
+            }
+        }
+    }
+
+    // Write the template to the file
+    let written = fs::write(file_name, template);
+
+    match written {
+        Ok(_) => {
+            if options.debug {
+                cprintln!("<green>File written successfully</green>");
+            }
+        }
+        Err(_) => print_error("Could not write file"),
+    }
 }

@@ -2,13 +2,12 @@
 
 use crate::Options;
 use crate::defaults::{
-    ARTICLE_TEMPLATE_STRING, AUTHOR_PLACEHOLDER, ORCID_ICON_SIZE_PT, ORCID_IMAGE,
-    REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY,
+    ARTICLE_TEMPLATE_STRING, ORCID_ICON_SIZE_PT, ORCID_IMAGE, REPORT_TEMPLATE_STRING,
+    TEMPLATE_DIRECTORY,
 };
 use dirs;
 use std::fs;
-use std::path::PathBuf;
-use whoami::realname;
+use std::path::{Path, PathBuf};
 
 // An enum representing the different types of templates available
 #[derive(Debug, Clone)]
@@ -24,7 +23,6 @@ pub enum TemplateSource {
     BuiltinReport,
     BuiltinArticle,
     Custom(PathBuf),
-    DefaultTemplate,
 }
 
 // An enum representing the different errors that can occur during templating
@@ -40,16 +38,8 @@ const BUILTIN_REPORT_ARG: &str = "report";
 const BUILTIN_ARTICLE_ARG: &str = "article";
 
 // Get a template, builtin or custom
-pub fn get_template(
-    template_source: TemplateSource,
-    default_template: TemplateSource,
-) -> Result<Template, TemplatingError> {
-    let actual_source = match template_source {
-        TemplateSource::DefaultTemplate => default_template,
-        other => other,
-    };
-
-    match actual_source {
+pub fn get_template(template_source: TemplateSource) -> Result<Template, TemplatingError> {
+    match template_source {
         // Builtin report template
         TemplateSource::BuiltinReport => Ok(Template::Report(String::from(REPORT_TEMPLATE_STRING))),
         // Builtin article template
@@ -62,100 +52,69 @@ pub fn get_template(
             Ok(content) => Ok(Template::Custom(content)),
             Err(_) => Err(TemplatingError::CouldNotReadTemplateFile(path)),
         },
-
-        // Default template
-        TemplateSource::DefaultTemplate => unreachable!(),
     }
 }
 
-// Reformat author name to last name, first name if it has 2 names
-fn reformat_author_name(author: &String) -> String {
-    let parts = author.split(" ").collect::<Vec<&str>>();
-    match parts.len() {
-        0 => String::new(),
-        2 => format!(
-            "{}, {}",
-            author.split(" ").collect::<Vec<&str>>()[1],
-            author.split(" ").collect::<Vec<&str>>()[0]
-        ),
-        _ => author.clone(),
+fn lib_file_exists(lib_file: impl AsRef<Path>) -> bool {
+    match dirs::config_dir() {
+        Some(path) => path.join("typstgen").join(lib_file).exists(),
+        None => false,
     }
+}
+
+// Substitute ORCID icon declaration and ID into the template
+fn substitute_orcid(template: &str, options: &Options) -> String {
+    let return_template = if template.contains("{{ORCID_ICON_DECLARATION}}") {
+        let orcid_icon = format!(
+            "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+            ORCID_IMAGE.replace("\"", "\\\""),
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+        );
+        template
+            .replace(
+                "{{ORCID_ID}}",
+                format!(" #orcid_svg https://orcid.org/{}", &options.orcid).as_str(),
+            )
+            .replace("{{ORCID_ICON_DECLARATION}}", &orcid_icon)
+    } else {
+        template.replace(
+            "{{ORCID_ID}}",
+            format!(" | https://orcid.org/{}", &options.orcid).as_str(),
+        )
+    };
+
+    return_template
 }
 
 // Substitute template with options
 fn substitute_template(template: String, options: &Options) -> Result<String, TemplatingError> {
-    let mut template = template;
-    let cfg_dir = match dirs::config_dir() {
-        Some(dir) => dir,
-        None => return Err(TemplatingError::CouldNotFindCfgDir),
-    };
+    let lib_file = options.lib_file.clone();
 
-    let lib_file = cfg_dir.join(format!("typstgen/lib.typ"));
-
-    if lib_file.exists() {
-        template = format!("#include {}\n\n {}", lib_file.display(), template);
-    }
-
-    // Get the author name, infer it if git inference is enabled
-    let author = match options.author.clone() {
-        Some(author) => author,
-        None => {
-            if options.name_inference {
-                match realname() {
-                    Ok(username) => {
-                        if options.inferred_name_reformat {
-                            reformat_author_name(&username)
-                        } else {
-                            username
-                        }
-                    }
-                    Err(_) => AUTHOR_PLACEHOLDER.to_string(),
-                }
-            } else {
-                AUTHOR_PLACEHOLDER.to_string()
-            }
-        }
+    let template = if lib_file_exists(&lib_file) {
+        format!("#import \"{}\": *\n\n {}", lib_file.display(), template)
+    } else {
+        template
     };
 
     // Substitute author name, reformatted to last name, first name
-    template = template.replace("{{AUTHOR_NAME}}", &author);
+    let template = template.replace("{{AUTHOR_NAME}}", &options.author);
 
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
-    match options.orcid.clone() {
-        Some(id) => {
-            if template.contains("{{ORCID_ICON_DECLARATION}}") {
-                template = template.replace(
-                    "{{ORCID_ID}}",
-                    &format!(" #orcid_svg https://orcid.org/{}", id),
-                );
-                template = template.replace(
-                    "{{ORCID_ICON_DECLARATION}}",
-                    format!(
-                        "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
-                        ORCID_IMAGE.replace("\"", "\\\""),
-                        ORCID_ICON_SIZE_PT,
-                        ORCID_ICON_SIZE_PT,
-                        ORCID_ICON_SIZE_PT,
-                    ).as_str(),
-                );
-            } else {
-                template = template.replace("{{ORCID_ID}}", &id);
-            }
-        }
-        None => {
-            template = template.replace("{{ORCID_ID}}", "");
-            template = template.replace("{{ORCID_ICON_DECLARATION}}", "");
-        }
-    }
+    let template = substitute_orcid(&template, &options);
 
-    template = template.replace("{{LANG}}", &options.lang);
+    let template = template.replace("{{LANG}}", &options.lang);
+
+    let template = template.replace("{{EMAIL}}", &options.email);
 
     Ok(template)
 }
 
+// Assemble the template by substituting variables and importing the library file
 pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
-    let template = get_template(options.template.clone(), options.default_template.clone())?;
+    let template = get_template(options.template.clone())?;
     let template_string = match template {
         Template::Article(content) => content,
         Template::Report(content) => content,
@@ -166,8 +125,8 @@ pub fn assemble_template(options: &Options) -> Result<String, TemplatingError> {
 }
 
 // Get the source for the applied template
-pub fn get_template_source(template_name: String) -> Result<TemplateSource, TemplatingError> {
-    match template_name.as_str() {
+pub fn get_template_source(template_name: &str) -> Result<TemplateSource, TemplatingError> {
+    match template_name {
         BUILTIN_REPORT_ARG => Ok(TemplateSource::BuiltinReport),
         BUILTIN_ARTICLE_ARG => Ok(TemplateSource::BuiltinArticle),
         other_name => {
