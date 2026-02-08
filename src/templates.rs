@@ -6,7 +6,7 @@ use crate::defaults::{
     TEMPLATE_DIRECTORY,
 };
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // An enum representing the different types of templates available
 #[derive(Debug, Clone)]
@@ -167,7 +167,7 @@ pub fn get_template_source(
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use fs;
     use tempfile::tempdir;
@@ -297,6 +297,33 @@ mod test {
         assert!(result.contains("John Doe | https://orcid.org/0000-0002-1825-0097"));
         assert!(!result.contains("{{ORCID_ID}}"));
         assert!(!result.contains("{{AUTHOR_NAME}}"));
+    }
+
+    #[test]
+    fn test_substitute_orcid_icon_declaration() {
+        let template = String::from("{{ORCID_ICON_DECLARATION}}");
+        let options = Options {
+            output: String::from("output"),
+            template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
+            author: String::from("John Doe"),
+            email: String::from("john.doe@example.com"),
+            lang: String::from("en"),
+            debug: false,
+            lib_file: PathBuf::from("lib.typ"),
+            orcid: String::from("0000-0002-1825-0097"),
+        };
+        let cfg_dir = Some(tempdir().unwrap().path().to_path_buf());
+        let result = substitute_template(template, &options, &cfg_dir)
+            .ok()
+            .unwrap();
+        let expected = format!(
+            "#let orcid_svg = box(image(bytes(\"{}\"), width: {}pt, height: {}pt), height: {}pt)",
+            ORCID_IMAGE.replace("\"", "\\\""),
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+            ORCID_ICON_SIZE_PT,
+        );
+        assert_eq!(result, expected);
     }
 
     #[test]
