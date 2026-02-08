@@ -1,25 +1,56 @@
 use crate::Options;
 use crate::cli::FlagOptions;
 use crate::defaults::{
-    DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE,
-    INFERRED_NAME_REFORMAT_DEFAULT, NAME_INFERENCE_DEFAULT,
+    AUTHOR_PLACEHOLDER, DEFAULT_LIB_FILE, DEFAULT_ORCID, DEFAULT_OUTPUT, DEFAULT_TEMPLATE,
+    NAME_INFERENCE_DEFAULT,
 };
 use crate::templates::TemplateSource;
 use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use whoami::realname;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     default_output: Option<String>,
     default_template: Option<String>,
-    inferred_name_reformat: Option<bool>,
     name_inference: Option<bool>,
     orcid: Option<String>,
     email: Option<String>,
     default_author: Option<String>,
     lib_file: Option<String>,
+}
+
+// Process author name, infer it if git inference is enabled
+fn process_author_name(
+    author: Option<String>,
+    config_default: Option<String>,
+    infer_name: Option<bool>,
+) -> String {
+    match &author {
+        Some(author) => author.clone(),
+        None => match config_default {
+            Some(default) => default,
+            None => match infer_name {
+                Some(true) => match realname() {
+                    Ok(username) => username,
+                    Err(_) => AUTHOR_PLACEHOLDER.to_string(),
+                },
+                Some(false) => AUTHOR_PLACEHOLDER.to_string(),
+                None => {
+                    if NAME_INFERENCE_DEFAULT {
+                        match realname() {
+                            Ok(username) => username,
+                            Err(_) => AUTHOR_PLACEHOLDER.to_string(),
+                        }
+                    } else {
+                        AUTHOR_PLACEHOLDER.to_string()
+                    }
+                }
+            },
+        },
+    }
 }
 
 pub fn load_config(config_path: &PathBuf) -> Option<Config> {
@@ -35,7 +66,6 @@ pub fn load_config(config_path: &PathBuf) -> Option<Config> {
     Some(Config {
         default_output: config.default_output,
         default_template: config.default_template,
-        inferred_name_reformat: config.inferred_name_reformat,
         name_inference: config.name_inference,
         orcid: config.orcid,
         email: config.email,
@@ -47,13 +77,10 @@ pub fn load_config(config_path: &PathBuf) -> Option<Config> {
 pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
     Options {
         // Get the output name from the config if none is provided
-        output: match input_options.output {
-            Some(output) => output,
-            None => match config.default_output.clone() {
-                Some(output) => output,
-                None => String::from(DEFAULT_OUTPUT),
-            },
-        },
+        output: input_options
+            .output
+            .or(config.default_output.clone())
+            .unwrap_or(String::from(DEFAULT_OUTPUT)),
 
         // Get the template from the config if none is provided
         template: match input_options.template {
@@ -79,35 +106,18 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
             },
         },
 
-        // Get whether the name is to be inferred
-        name_inference: match config.name_inference.clone() {
-            Some(inference) => inference,
-            None => NAME_INFERENCE_DEFAULT,
-        },
-
-        // Get whether the name is to be reformatted
-        inferred_name_reformat: match config.inferred_name_reformat.clone() {
-            Some(reformat) => reformat,
-            None => INFERRED_NAME_REFORMAT_DEFAULT,
-        },
-
         // Get the orcid from the directory if not provided
-        orcid: match input_options.orcid {
-            Some(orcid) => orcid,
-            None => match config.orcid.clone() {
-                Some(orcid) => orcid,
-                None => String::from(DEFAULT_ORCID),
-            },
-        },
+        orcid: input_options
+            .orcid
+            .or(config.orcid.clone())
+            .unwrap_or(String::from(DEFAULT_ORCID)),
 
         // Get the author from the config if not provided
-        author: match input_options.author {
-            Some(author) => Some(author),
-            None => match config.default_author.clone() {
-                Some(author) => Some(author),
-                None => None,
-            },
-        },
+        author: process_author_name(
+            input_options.author,
+            config.default_author.clone(),
+            config.name_inference.clone(),
+        ),
 
         // Get the language
         lang: input_options.lang,
@@ -134,13 +144,13 @@ pub fn apply_default_config(input_options: FlagOptions) -> Options {
             Some(template) => template,
             None => DEFAULT_TEMPLATE,
         },
-        author: input_options.author,
+        author: input_options
+            .author
+            .unwrap_or(String::from(AUTHOR_PLACEHOLDER)),
         orcid: match input_options.orcid {
             Some(orcid) => orcid,
             None => String::from(DEFAULT_ORCID),
         },
-        name_inference: NAME_INFERENCE_DEFAULT,
-        inferred_name_reformat: INFERRED_NAME_REFORMAT_DEFAULT,
         lib_file: PathBuf::from(DEFAULT_LIB_FILE),
     }
 }

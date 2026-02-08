@@ -17,12 +17,10 @@ use templates::{TemplateSource, TemplatingError, assemble_template};
 pub struct Options {
     output: String,
     template: TemplateSource,
-    author: Option<String>,
+    author: String,
     orcid: String,
     lang: String,
     debug: bool,
-    name_inference: bool,
-    inferred_name_reformat: bool,
     lib_file: PathBuf,
 }
 
@@ -158,6 +156,7 @@ fn main() {
         }
     }
 
+    // Write the template to the file
     let written = fs::write(file_name, template);
 
     if options.debug {
