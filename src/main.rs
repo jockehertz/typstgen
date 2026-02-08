@@ -45,21 +45,13 @@ fn main() {
                 }
                 TemplatingError::CouldNotReadTemplateFile(filepath) => {
                     print_error(
-                        format!(
-                            "Could not find template file at {}",
-                            filepath.to_str().unwrap()
-                        )
-                        .as_str(),
+                        format!("Could not find template file at {}", filepath.display()).as_str(),
                     );
                     return;
                 }
                 TemplatingError::NoTemplateDirectory(dir_path) => {
                     print_error(
-                        format!(
-                            "The {} directory does not exist.",
-                            dir_path.to_str().unwrap()
-                        )
-                        .as_str(),
+                        format!("The {} directory does not exist.", dir_path.display()).as_str(),
                     );
                     return;
                 }
@@ -114,18 +106,12 @@ fn main() {
                 return;
             }
             TemplatingError::CouldNotReadTemplateFile(filepath) => {
-                print_error(
-                    format!("Could not read file at {}", filepath.to_str().unwrap()).as_str(),
-                );
+                print_error(format!("Could not read file at {}", filepath.display()).as_str());
                 return;
             }
             TemplatingError::NoTemplateDirectory(dir_path) => {
                 print_error(
-                    format!(
-                        "The {} directory does not exist",
-                        dir_path.to_str().unwrap()
-                    )
-                    .as_str(),
+                    format!("The {} directory does not exist", dir_path.display()).as_str(),
                 );
                 return;
             }

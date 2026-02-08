@@ -60,13 +60,20 @@ pub fn apply_config(config: &Config, input_options: FlagOptions) -> Options {
             Some(template) => template,
             None => match &config.default_template {
                 Some(name) => {
-                    let default_template_path =
-                        dirs::config_dir().unwrap().join("typstgen/templates");
-                    let template_path_reformatted = match name.ends_with("typ") {
-                        true => default_template_path.join(name),
-                        false => default_template_path.join(format!("{}.typ", name)),
+                    let default_template_path = match dirs::config_dir() {
+                        Some(dir) => Some(dir.join("typstgen/templates")),
+                        None => None,
                     };
-                    TemplateSource::Custom(template_path_reformatted)
+                    match default_template_path {
+                        Some(default_template_path) => {
+                            let template_path_reformatted = match name.ends_with("typ") {
+                                true => default_template_path.join(name),
+                                false => default_template_path.join(format!("{}.typ", name)),
+                            };
+                            TemplateSource::Custom(template_path_reformatted)
+                        }
+                        None => DEFAULT_TEMPLATE,
+                    }
                 }
                 None => DEFAULT_TEMPLATE,
             },
