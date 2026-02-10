@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_substitute_orcid_and_author() {
-        let template = format!("{} {}", AUTHOR_NAME_VARIABLE, AUTHOR_ORCID_URL_VARIABLE);
+        let template = format!("{}{}", AUTHOR_NAME_VARIABLE, AUTHOR_ORCID_URL_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
