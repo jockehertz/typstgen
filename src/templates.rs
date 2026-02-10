@@ -2,8 +2,9 @@
 
 use crate::Options;
 use crate::defaults::{
-    ARTICLE_TEMPLATE_STRING, ORCID_ICON_SIZE_PT, ORCID_IMAGE, REPORT_TEMPLATE_STRING,
-    TEMPLATE_DIRECTORY,
+    ARTICLE_TEMPLATE_STRING, AUTHOR_EMAIL_VARIABLE, AUTHOR_NAME_VARIABLE,
+    AUTHOR_ORCID_URL_VARIABLE, AUTHOR_ORCID_VARIABLE, LANG_VARIABLE, ORCID_ICON_DECLARATION,
+    ORCID_ICON_SIZE_PT, ORCID_IMAGE, REPORT_TEMPLATE_STRING, TEMPLATE_DIRECTORY,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -67,15 +68,24 @@ fn substitute_orcid(template: &str, options: &Options) -> String {
         );
         template
             .replace(
-                "{{ORCID_ID}}",
+                AUTHOR_ORCID_URL_VARIABLE,
                 format!(" #orcid_svg https://orcid.org/{}", &options.orcid).as_str(),
             )
-            .replace("{{ORCID_ICON_DECLARATION}}", &orcid_icon)
+            .replace(
+                AUTHOR_ORCID_VARIABLE,
+                format!(" #orcid_svg {}", &options.orcid).as_str(),
+            )
+            .replace(ORCID_ICON_DECLARATION, &orcid_icon)
     } else {
-        template.replace(
-            "{{ORCID_ID}}",
-            format!(" | https://orcid.org/{}", &options.orcid).as_str(),
-        )
+        template
+            .replace(
+                AUTHOR_ORCID_URL_VARIABLE,
+                format!(" | https://orcid.org/{}", &options.orcid).as_str(),
+            )
+            .replace(
+                AUTHOR_ORCID_VARIABLE,
+                format!(" | {}", &options.orcid).as_str(),
+            )
     };
 
     return_template
@@ -101,7 +111,7 @@ fn substitute_template(
     };
 
     // Substitute author name, reformatted to last name, first name
-    let template = template.replace("{{AUTHOR_NAME}}", &options.author);
+    let template = template.replace(AUTHOR_NAME_VARIABLE, &options.author);
 
     // Substitute author ORCID ID if it exists
     // The ORCID is only declared if an ORCID ID is provided
@@ -109,7 +119,7 @@ fn substitute_template(
 
     let template = template.replace("{{LANG}}", &options.lang);
 
-    let template = template.replace("{{EMAIL}}", &options.email);
+    let template = template.replace(AUTHOR_EMAIL_VARIABLE, &options.email);
 
     Ok(template)
 }
@@ -174,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_substitute_orcid() {
-        let template = String::from("{{ORCID_ID}}");
+        let template = String::from(AUTHOR_ORCID_URL_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -194,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_substitute_author() {
-        let template = String::from("{{AUTHOR_NAME}}");
+        let template = String::from(AUTHOR_NAME_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -210,12 +220,12 @@ mod tests {
             .ok()
             .unwrap();
         assert!(result.contains("John Doe"));
-        assert!(!result.contains("{{AUTHOR_NAME}}"));
+        assert!(!result.contains(AUTHOR_NAME_VARIABLE));
     }
 
     #[test]
     fn test_substitute_email() {
-        let template = String::from("{{EMAIL}}");
+        let template = String::from(AUTHOR_EMAIL_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -231,12 +241,12 @@ mod tests {
             .ok()
             .unwrap();
         assert!(result.contains("john.doe@example.com"));
-        assert!(!result.contains("{{EMAIL}}"));
+        assert!(!result.contains(AUTHOR_EMAIL_VARIABLE));
     }
 
     #[test]
     fn test_substitute_lang() {
-        let template = String::from("{{LANG}}");
+        let template = String::from(LANG_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -252,12 +262,12 @@ mod tests {
             .ok()
             .unwrap();
         assert!(result.contains("en"));
-        assert!(!result.contains("{{LANG}}"));
+        assert!(!result.contains(LANG_VARIABLE));
     }
 
     #[test]
     fn test_substitute_author_and_email() {
-        let template = String::from("{{AUTHOR_NAME}} {{EMAIL}}");
+        let template = format!("{} {}", AUTHOR_NAME_VARIABLE, AUTHOR_EMAIL_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -273,13 +283,13 @@ mod tests {
             .ok()
             .unwrap();
         assert!(result.contains("John Doe john.doe@example.com"));
-        assert!(!result.contains("{{AUTHOR_NAME}}"));
-        assert!(!result.contains("{{EMAIL}}"));
+        assert!(!result.contains(AUTHOR_NAME_VARIABLE));
+        assert!(!result.contains(AUTHOR_EMAIL_VARIABLE));
     }
 
     #[test]
     fn test_substitute_orcid_and_author() {
-        let template = String::from("{{AUTHOR_NAME}}{{ORCID_ID}}");
+        let template = format!("{} {}", AUTHOR_NAME_VARIABLE, AUTHOR_ORCID_URL_VARIABLE);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -295,13 +305,13 @@ mod tests {
             .ok()
             .unwrap();
         assert!(result.contains("John Doe | https://orcid.org/0000-0002-1825-0097"));
-        assert!(!result.contains("{{ORCID_ID}}"));
-        assert!(!result.contains("{{AUTHOR_NAME}}"));
+        assert!(!result.contains(AUTHOR_ORCID_URL_VARIABLE));
+        assert!(!result.contains(AUTHOR_NAME_VARIABLE));
     }
 
     #[test]
     fn test_substitute_orcid_icon_declaration() {
-        let template = String::from("{{ORCID_ICON_DECLARATION}}");
+        let template = String::from(ORCID_ICON_DECLARATION);
         let options = Options {
             output: String::from("output"),
             template: TemplateSource::Custom(PathBuf::from("custom_template.typ")),
@@ -328,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_get_source() {
-        let template_string = String::from("{{AUTHOR_NAME}}{{ORCID_ID}}");
+        let template_string = format!("{} {}", AUTHOR_NAME_VARIABLE, AUTHOR_ORCID_URL_VARIABLE);
         let cfg_dir = match tempdir() {
             Ok(dir) => Some(dir.path().to_path_buf()),
             Err(_) => None,

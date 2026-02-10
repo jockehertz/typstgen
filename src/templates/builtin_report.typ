@@ -11,7 +11,7 @@
 
 #align(center)[
   #title() \
-  {{AUTHOR_NAME}}{{ORCID_ID}} \
+  {{AUTHOR_NAME}}{{AUTHOR_ORCID_URL}} \
   #datetime.today().display() \
 ]
 #pagebreak()

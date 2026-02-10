@@ -21,3 +21,10 @@ pub const ORCID_ICON_SIZE_PT: f64 = 18.0;
 pub const DEFAULT_ORCID: &str = "0000-0000-0000-0000";
 
 pub const DEFAULT_LIB_FILE: &str = "lib.typ";
+
+pub const AUTHOR_NAME_VARIABLE: &str = "{{AUTHOR_NAME}}";
+pub const AUTHOR_EMAIL_VARIABLE: &str = "{{AUTHOR_EMAIL}}";
+pub const AUTHOR_ORCID_VARIABLE: &str = "{{AUTHOR_ORCID}}";
+pub const ORCID_ICON_DECLARATION: &str = "{{ORCID_ICON_DECLARATION}}";
+pub const AUTHOR_ORCID_URL_VARIABLE: &str = "{{AUTHOR_ORCID_URL}}";
+pub const LANG_VARIABLE: &str = "{{LANG}}";
