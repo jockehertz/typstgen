@@ -163,10 +163,7 @@ fn main() {
         }
     }
 
-    // Write the template to the file
-    let written = fs::write(file_name, template);
-
-    match written {
+    match fs::write(file_name, template) {
         Ok(_) => {
             if options.debug {
                 cprintln!("<green>File written successfully</green>");
