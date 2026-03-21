@@ -117,7 +117,7 @@ fn substitute_template(
     // The ORCID is only declared if an ORCID ID is provided
     let template = substitute_orcid(&template, &options);
 
-    let template = template.replace("{{LANG}}", &options.lang);
+    let template = template.replace(LANG_VARIABLE, &options.lang);
 
     let template = template.replace(AUTHOR_EMAIL_VARIABLE, &options.email);
 

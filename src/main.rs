@@ -35,7 +35,9 @@ fn main() {
     let args = Args::parse();
 
     let config_dir: Option<PathBuf> = match dirs::config_dir() {
-        Some(dir) => Some(dir.join("typstgen")),
+        Some(dir) => { 
+            Some(dir.join("typstgen"))
+        }
         None => {
             print_error("Could not find the configuration directory");
             None
@@ -140,9 +142,9 @@ fn main() {
         false => format!("{}.typ", options.output),
     };
 
-    let lib_file_path = match config_dir {
-        Some(path) => match path.join("typstgen").join(&options.lib_file).exists() {
-            true => Some(path.join("typstgen").join(&options.lib_file)),
+    let lib_file_path = match config_dir.clone() {
+        Some(path) => match path.join(&options.lib_file).exists() {
+            true => Some(path.join(&options.lib_file)),
             false => None,
         },
         None => None,

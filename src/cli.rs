@@ -4,6 +4,7 @@ use crate::{
     defaults::DEFAULT_LANG,
     templates::{TemplateSource, TemplatingError, get_template_source},
 };
+
 use clap::Parser;
 
 use std::path::PathBuf;
@@ -52,6 +53,7 @@ pub struct FlagOptions {
     pub lang: String,
     pub debug: bool,
 }
+
 // Parse the CLI arguments into an Options struct
 pub fn parse_cli_args(args: Args, config_path: &Option<PathBuf>) -> Result<FlagOptions, CliError> {
     let template: Option<TemplateSource> = args
